@@ -3,19 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, X, CheckCircle } from "lucide-react";
+import { Upload, FileText, X, CheckCircle, Play, Loader2 } from "lucide-react";
 
 interface UploadedFile {
   id: string;
   name: string;
   size: number;
-  status: 'uploading' | 'processing' | 'completed' | 'error';
+  status: 'uploaded' | 'processing' | 'completed' | 'error';
   progress: number;
 }
 
 export const UploadSection = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -38,45 +39,80 @@ export const UploadSection = () => {
         id: Date.now() + Math.random().toString(),
         name: file.name,
         size: file.size,
-        status: 'uploading',
+        status: 'uploaded',
         progress: 0
       };
       
       setFiles(prev => [...prev, newFile]);
-      
-      // Simulate upload and processing
-      simulateProcessing(newFile.id);
+    });
+
+    toast({
+      title: "File caricati",
+      description: `${pdfFiles.length} PDF pronti per l'elaborazione`,
     });
   }, [toast]);
 
-  const simulateProcessing = (fileId: string) => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 15;
-      
-      if (progress >= 100) {
-        setFiles(prev => prev.map(file => 
-          file.id === fileId 
-            ? { ...file, status: 'completed', progress: 100 }
-            : file
-        ));
-        clearInterval(interval);
-        toast({
-          title: "Elaborazione completata",
-          description: "I lead sono stati estratti con successo",
-        });
-      } else {
-        setFiles(prev => prev.map(file => 
-          file.id === fileId 
-            ? { 
-                ...file, 
-                progress,
-                status: progress > 30 ? 'processing' : 'uploading'
-              }
-            : file
-        ));
-      }
-    }, 500);
+  const startProcessing = async () => {
+    const uploadedFiles = files.filter(file => file.status === 'uploaded');
+    
+    if (uploadedFiles.length === 0) {
+      toast({
+        title: "Nessun file da elaborare",
+        description: "Carica almeno un PDF prima di avviare l'elaborazione",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    toast({
+      title: "Elaborazione avviata",
+      description: `Elaborazione di ${uploadedFiles.length} file PDF in corso...`,
+    });
+
+    // Process each file
+    for (const file of uploadedFiles) {
+      await simulateProcessing(file.id);
+    }
+    
+    setIsProcessing(false);
+    
+    toast({
+      title: "Elaborazione completata",
+      description: "Tutti i lead sono stati estratti con successo",
+    });
+  };
+
+  const simulateProcessing = (fileId: string): Promise<void> => {
+    return new Promise((resolve) => {
+      setFiles(prev => prev.map(file => 
+        file.id === fileId 
+          ? { ...file, status: 'processing', progress: 0 }
+          : file
+      ));
+
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random() * 20 + 10;
+        
+        if (progress >= 100) {
+          setFiles(prev => prev.map(file => 
+            file.id === fileId 
+              ? { ...file, status: 'completed', progress: 100 }
+              : file
+          ));
+          clearInterval(interval);
+          resolve();
+        } else {
+          setFiles(prev => prev.map(file => 
+            file.id === fileId 
+              ? { ...file, progress }
+              : file
+          ));
+        }
+      }, 800);
+    });
   };
 
   const removeFile = (fileId: string) => {
@@ -157,20 +193,54 @@ export const UploadSection = () => {
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>{formatFileSize(file.size)}</span>
                         <span className="capitalize">
-                          {file.status === 'uploading' && 'Caricamento...'}
+                          {file.status === 'uploaded' && 'Pronto'}
                           {file.status === 'processing' && 'Elaborazione...'}
                           {file.status === 'completed' && 'Completato'}
                           {file.status === 'error' && 'Errore'}
                         </span>
                       </div>
                       
-                      {file.status !== 'completed' && (
+                      {file.status !== 'completed' && file.status !== 'uploaded' && (
                         <Progress value={file.progress} className="mt-2" />
                       )}
                     </div>
                   </div>
                 ))}
               </div>
+              
+              {files.some(file => file.status === 'uploaded') && (
+                <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h5 className="font-semibold mb-1">
+                        Pronti per l'elaborazione
+                      </h5>
+                      <p className="text-sm text-muted-foreground">
+                        {files.filter(f => f.status === 'uploaded').length} file PDF caricati
+                      </p>
+                    </div>
+                    <Button 
+                      variant="hero" 
+                      size="lg"
+                      onClick={startProcessing}
+                      disabled={isProcessing}
+                      className="min-w-[160px]"
+                    >
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Elaborando...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-5 w-5" />
+                          Avvia elaborazione
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </Card>
           )}
         </div>
