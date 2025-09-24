@@ -22,47 +22,114 @@ import {
 
 interface Lead {
   id: string;
+  // Dati dell'appalto (costanti per tutti i lead dello stesso PDF)
   project: string;
   client: string;
-  responsible: string;
-  contractor: string;
   amount: string;
-  location: string;
   deadline: string;
-  email?: string;
-  phone?: string;
+  cig: string;
   category: string;
-  status: string;
+  location: string;
+  // Dati del singolo progettista/lead
+  designerName: string;
+  designerType: string; // architetto, ingegnere, geologo, etc.
+  designerCompany: string;
+  designerEmail?: string;
+  designerPhone?: string;
+  designerAddress?: string;
+  status: 'nuovo' | 'contattato' | 'interessato' | 'non_interessato';
+  notes?: string;
+  sourceFile: string; // nome del PDF da cui è stato estratto
 }
 
 const mockLeads: Lead[] = [
+  // Lead dal Centro salute mentale
   {
     id: "1",
     project: "Centro salute mentale",
     client: "V.le Cittadini 52100 Arezzo (AR)",
-    responsible: "Caneschi Alessandro",
-    contractor: "FS Costruzioni srl",
     amount: "€1.685.000",
-    location: "Arezzo, Toscana",
     deadline: "2027/06",
-    email: "urp.arezzo@uslsudest.toscana.it",
-    phone: "+39055752551",
+    cig: "CIG123456789",
     category: "Ospedali",
-    status: "Fase Esecuzione"
+    location: "Arezzo, Toscana",
+    designerName: "Caneschi Alessandro",
+    designerType: "Architetto",
+    designerCompany: "Studio Caneschi & Associati",
+    designerEmail: "a.caneschi@studioarch.it",
+    designerPhone: "+39055752551",
+    designerAddress: "Via Roma 12, Arezzo",
+    status: "nuovo",
+    notes: "Responsabile della progettazione architettonica",
+    sourceFile: "bando_centro_salute_mentale.pdf"
   },
   {
-    id: "2", 
+    id: "2",
+    project: "Centro salute mentale", 
+    client: "V.le Cittadini 52100 Arezzo (AR)",
+    amount: "€1.685.000",
+    deadline: "2027/06",
+    cig: "CIG123456789",
+    category: "Ospedali",
+    location: "Arezzo, Toscana",
+    designerName: "Martini Francesco",
+    designerType: "Ingegnere Strutturale",
+    designerCompany: "Ingegneria Strutturale Toscana",
+    designerEmail: "f.martini@iststrutturale.it",
+    designerPhone: "+39055987654",
+    status: "nuovo",
+    sourceFile: "bando_centro_salute_mentale.pdf"
+  },
+  {
+    id: "3",
+    project: "Centro salute mentale",
+    client: "V.le Cittadini 52100 Arezzo (AR)", 
+    amount: "€1.685.000",
+    deadline: "2027/06",
+    cig: "CIG123456789",
+    category: "Ospedali",
+    location: "Arezzo, Toscana",
+    designerName: "Bianca Rossi",
+    designerType: "Ingegnere Impiantista",
+    designerCompany: "Impianti Moderni SRL",
+    designerEmail: "b.rossi@impiantimoderni.it",
+    status: "nuovo",
+    sourceFile: "bando_centro_salute_mentale.pdf"
+  },
+  // Lead dall'ospedale pediatrico
+  {
+    id: "4",
     project: "Ristrutturazione ospedale pediatrico",
     client: "ASL Toscana Centro",
-    responsible: "Rossi Maria",
-    contractor: "Edil Toscana SpA",
     amount: "€2.450.000",
-    location: "Firenze, Toscana", 
     deadline: "2026/12",
-    email: "gare@asltoscanacentro.it",
-    phone: "+39055123456",
+    cig: "CIG987654321", 
     category: "Ospedali",
-    status: "Progettazione"
+    location: "Firenze, Toscana",
+    designerName: "Marco Bianchi",
+    designerType: "Architetto",
+    designerCompany: "Bianchi Architettura",
+    designerEmail: "m.bianchi@bianchiarc.it",
+    designerPhone: "+39055123456",
+    status: "nuovo",
+    notes: "Specializzato in strutture sanitarie pediatriche",
+    sourceFile: "bando_ospedale_pediatrico.pdf"
+  },
+  {
+    id: "5", 
+    project: "Ristrutturazione ospedale pediatrico",
+    client: "ASL Toscana Centro",
+    amount: "€2.450.000", 
+    deadline: "2026/12",
+    cig: "CIG987654321",
+    category: "Ospedali",
+    location: "Firenze, Toscana",
+    designerName: "Laura Verdi",
+    designerType: "Ingegnere Biomedico",
+    designerCompany: "Biotech Engineering",
+    designerEmail: "l.verdi@biotech.it",
+    status: "nuovo",
+    sourceFile: "bando_ospedale_pediatrico.pdf"
   }
 ];
 
@@ -138,19 +205,22 @@ export const ResultsSection = () => {
 
   const exportToGoogleSheets = () => {
     const csvContent = [
-      ["Progetto", "Cliente", "Responsabile", "Appaltatore", "Importo", "Luogo", "Scadenza", "Email", "Telefono", "Categoria", "Stato"],
+      ["Progetto", "Cliente", "CIG", "Importo", "Scadenza", "Progettista", "Tipologia", "Azienda", "Email", "Telefono", "Indirizzo", "Status", "Note", "File Origine"],
       ...leads.map(lead => [
         lead.project,
-        lead.client, 
-        lead.responsible,
-        lead.contractor,
+        lead.client,
+        lead.cig,
         lead.amount,
-        lead.location,
         lead.deadline,
-        lead.email || "",
-        lead.phone || "",
-        lead.category,
-        lead.status
+        lead.designerName,
+        lead.designerType,
+        lead.designerCompany,
+        lead.designerEmail || "",
+        lead.designerPhone || "",
+        lead.designerAddress || "",
+        lead.status,
+        lead.notes || "",
+        lead.sourceFile
       ])
     ].map(row => row.join(",")).join("\n");
 
@@ -158,13 +228,13 @@ export const ResultsSection = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "leads-appalti.csv";
+    a.download = "progettisti-appalti.csv";
     a.click();
     window.URL.revokeObjectURL(url);
 
     toast({
       title: "CSV generato",
-      description: "File scaricato - importalo in Google Sheets",
+      description: "File progettisti scaricato - importalo in Google Sheets",
     });
   };
 
@@ -177,9 +247,9 @@ export const ResultsSection = () => {
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-8">
-            <h3 className="text-3xl font-bold mb-4">Lead estratti</h3>
+            <h3 className="text-3xl font-bold mb-4">Progettisti estratti</h3>
             <p className="text-muted-foreground text-lg">
-              Controlla e modifica i dati prima dell'export
+              Controlla e modifica i dati dei progettisti prima dell'export
             </p>
           </div>
 
@@ -197,10 +267,12 @@ export const ResultsSection = () => {
                     ) : (
                       <h4 className="text-xl font-bold mb-2">{lead.project}</h4>
                     )}
-                    <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
                       <Badge variant="secondary">{lead.category}</Badge>
-                      <Badge variant="outline">{lead.status}</Badge>
+                      <Badge variant="outline">{lead.cig}</Badge>
+                      <Badge variant="outline" className="text-xs">{lead.sourceFile}</Badge>
                     </div>
+                    <p className="text-sm text-muted-foreground mb-4">{lead.client}</p>
                   </div>
                   
                   <div className="flex items-center gap-2">
@@ -221,38 +293,97 @@ export const ResultsSection = () => {
                   </div>
                 </div>
 
+                <Separator className="mb-4" />
+                
+                {/* Sezione Progettista */}
+                <div className="bg-primary/5 p-4 rounded-lg mb-4">
+                  <h5 className="font-semibold mb-3 text-primary">📋 Progettista</h5>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Nome</Label>
+                      {editingId === lead.id ? (
+                        <Input
+                          value={lead.designerName}
+                          onChange={(e) => updateLead(lead.id, 'designerName', e.target.value)}
+                        />
+                      ) : (
+                        <p className="font-medium">{lead.designerName}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Tipologia</Label>
+                      {editingId === lead.id ? (
+                        <Input
+                          value={lead.designerType}
+                          onChange={(e) => updateLead(lead.id, 'designerType', e.target.value)}
+                        />
+                      ) : (
+                        <p className="text-sm font-medium text-accent">{lead.designerType}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Azienda/Studio</Label>
+                      {editingId === lead.id ? (
+                        <Input
+                          value={lead.designerCompany}
+                          onChange={(e) => updateLead(lead.id, 'designerCompany', e.target.value)}
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground">{lead.designerCompany}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-primary" />
+                        <Label className="text-sm font-medium">Email</Label>
+                      </div>
+                      {editingId === lead.id ? (
+                        <Input
+                          value={lead.designerEmail || ""}
+                          onChange={(e) => updateLead(lead.id, 'designerEmail', e.target.value)}
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground">{lead.designerEmail || "N/A"}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-primary" />
+                        <Label className="text-sm font-medium">Telefono</Label>
+                      </div>
+                      {editingId === lead.id ? (
+                        <Input
+                          value={lead.designerPhone || ""}
+                          onChange={(e) => updateLead(lead.id, 'designerPhone', e.target.value)}
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground">{lead.designerPhone || "N/A"}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Status</Label>
+                      {editingId === lead.id ? (
+                        <Input
+                          value={lead.status}
+                          onChange={(e) => updateLead(lead.id, 'status', e.target.value as any)}
+                        />
+                      ) : (
+                        <Badge variant={lead.status === 'nuovo' ? 'secondary' : 'outline'}>
+                          {lead.status}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sezione Appalto */}
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-primary" />
-                      <Label className="text-sm font-medium">Cliente</Label>
-                    </div>
-                    {editingId === lead.id ? (
-                      <Input
-                        value={lead.client}
-                        onChange={(e) => updateLead(lead.id, 'client', e.target.value)}
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground">{lead.client}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-primary" />
-                      <Label className="text-sm font-medium">Responsabile</Label>
-                    </div>
-                    {editingId === lead.id ? (
-                      <Input
-                        value={lead.responsible}
-                        onChange={(e) => updateLead(lead.id, 'responsible', e.target.value)}
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground">{lead.responsible}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Euro className="h-4 w-4 text-accent" />
                       <Label className="text-sm font-medium">Importo</Label>
@@ -267,7 +398,7 @@ export const ResultsSection = () => {
                     )}
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-primary" />
                       <Label className="text-sm font-medium">Luogo</Label>
@@ -282,7 +413,7 @@ export const ResultsSection = () => {
                     )}
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-primary" />
                       <Label className="text-sm font-medium">Scadenza</Label>
@@ -294,21 +425,6 @@ export const ResultsSection = () => {
                       />
                     ) : (
                       <p className="text-sm text-muted-foreground">{lead.deadline}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-primary" />
-                      <Label className="text-sm font-medium">Email</Label>
-                    </div>
-                    {editingId === lead.id ? (
-                      <Input
-                        value={lead.email || ""}
-                        onChange={(e) => updateLead(lead.id, 'email', e.target.value)}
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground">{lead.email || "N/A"}</p>
                     )}
                   </div>
                 </div>

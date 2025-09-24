@@ -86,32 +86,61 @@ export const UploadSection = () => {
 
   const simulateProcessing = (fileId: string): Promise<void> => {
     return new Promise((resolve) => {
-      setFiles(prev => prev.map(file => 
-        file.id === fileId 
-          ? { ...file, status: 'processing', progress: 0 }
-          : file
+      const file = files.find(f => f.id === fileId);
+      if (!file) return resolve();
+
+      setFiles(prev => prev.map(f => 
+        f.id === fileId 
+          ? { ...f, status: 'processing', progress: 0 }
+          : f
       ));
 
       let progress = 0;
       const interval = setInterval(() => {
-        progress += Math.random() * 20 + 10;
+        progress += Math.random() * 15 + 5;
         
         if (progress >= 100) {
-          setFiles(prev => prev.map(file => 
-            file.id === fileId 
-              ? { ...file, status: 'completed', progress: 100 }
-              : file
+          setFiles(prev => prev.map(f => 
+            f.id === fileId 
+              ? { ...f, status: 'completed', progress: 100 }
+              : f
           ));
+          
+          // Genera multipli lead per questo PDF
+          const leadCount = Math.floor(Math.random() * 4) + 2; // 2-5 lead per PDF
+          const mockProjects = [
+            {
+              name: `Progetto estratto da ${file.name}`,
+              client: "Comune di " + ["Milano", "Roma", "Napoli", "Torino", "Palermo"][Math.floor(Math.random() * 5)],
+              amount: `€${(Math.random() * 3000000 + 500000).toLocaleString('it-IT')}`,
+              cig: `CIG${Math.random().toString().substr(2, 9)}`,
+              category: ["Ospedali", "Scuole", "Uffici Pubblici", "Infrastrutture"][Math.floor(Math.random() * 4)]
+            }
+          ];
+          
+          const designerTypes = ["Architetto", "Ingegnere Civile", "Ingegnere Strutturale", "Ingegnere Impiantista", "Geologo", "Ingegnere Biomedico"];
+          const companies = ["Studio Associato", "Engineering Solutions", "Progettazioni Moderne", "Tech Design", "Professional Studio"];
+          
+          console.log(`Estratti ${leadCount} progettisti da ${file.name}:`, {
+            project: mockProjects[0],
+            leadCount,
+            extractedDesigners: Array.from({length: leadCount}, (_, i) => ({
+              name: `Progettista ${i + 1}`,
+              type: designerTypes[Math.floor(Math.random() * designerTypes.length)],
+              company: companies[Math.floor(Math.random() * companies.length)]
+            }))
+          });
+          
           clearInterval(interval);
           resolve();
         } else {
-          setFiles(prev => prev.map(file => 
-            file.id === fileId 
-              ? { ...file, progress }
-              : file
+          setFiles(prev => prev.map(f => 
+            f.id === fileId 
+              ? { ...f, progress }
+              : f
           ));
         }
-      }, 800);
+      }, 600);
     });
   };
 
