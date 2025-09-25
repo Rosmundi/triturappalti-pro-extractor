@@ -86,9 +86,6 @@ export const UploadSection = () => {
 
   const simulateProcessing = (fileId: string): Promise<void> => {
     return new Promise((resolve) => {
-      const file = files.find(f => f.id === fileId);
-      if (!file) return resolve();
-
       setFiles(prev => prev.map(f => 
         f.id === fileId 
           ? { ...f, status: 'processing', progress: 0 }
@@ -108,7 +105,7 @@ export const UploadSection = () => {
           
           // Simula estrazione reale di lead da PDF
           // Qui in futuro andrà la vera elaborazione OCR/AI
-          console.log(`Elaborazione completata per ${file.name} - In attesa di vera implementazione OCR/AI`);
+          console.log(`Elaborazione completata per file ${fileId} - In attesa di vera implementazione OCR/AI`);
           
           clearInterval(interval);
           resolve();
