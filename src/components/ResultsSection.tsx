@@ -160,7 +160,7 @@ export const ResultsSection = ({ leads, onLeadsChange }: ResultsSectionProps) =>
     });
   };
 
-  if (leads.length === 0) {
+  if (!Array.isArray(leads) || leads.length === 0) {
     return null;
   }
 
@@ -366,7 +366,7 @@ export const ResultsSection = ({ leads, onLeadsChange }: ResultsSectionProps) =>
 
           <Card className="p-6">
             <h4 className="text-lg font-semibold mb-4">Esporta i lead</h4>
-            <div className="grid md:grid-copies-2 gap-6">
+            <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <Label htmlFor="webhook">Webhook URL (n8n o altro)</Label>
                 <Input

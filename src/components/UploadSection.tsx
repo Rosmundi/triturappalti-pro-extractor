@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -43,21 +43,19 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    const pdfFiles = droppedFiles.filter(file => file.type === 'application/pdf');
-    
-    if (pdfFiles.length !== droppedFiles.length) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const processFiles = useCallback((selectedFiles: File[]) => {
+    const pdfFiles = selectedFiles.filter(file => file.type === 'application/pdf');
+
+    if (pdfFiles.length !== selectedFiles.length) {
       toast({
         title: "Attenzione",
         description: "Solo i file PDF sono supportati",
         variant: "destructive",
       });
     }
-    
+
     pdfFiles.forEach(file => {
       const newFile: UploadedFile = {
         id: Date.now() + Math.random().toString(),
@@ -70,11 +68,26 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
       setFiles(prev => [...prev, newFile]);
     });
 
-    toast({
-      title: "File caricati",
-      description: `${pdfFiles.length} PDF pronti per l'elaborazione`,
-    });
+    if (pdfFiles.length > 0) {
+      toast({
+        title: "File caricati",
+        description: `${pdfFiles.length} PDF pronti per l'elaborazione`,
+      });
+    }
   }, [toast]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    processFiles(droppedFiles);
+  }, [processFiles]);
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    processFiles(Array.from(e.target.files));
+    e.target.value = "";
+  }, [processFiles]);
 
   const startProcessing = async () => {
     const uploadedFiles = files.filter(file => file.status === 'uploaded');
@@ -216,7 +229,16 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
               <p className="text-muted-foreground mb-6">
                 o clicca per selezionare i file dal tuo computer
               </p>
-              <Button variant="professional" size="lg">
+              <input
+                ref={inputRef}
+                type="file"
+                accept="application/pdf"
+                multiple
+                className="hidden"
+                onChange={handleFileInputChange}
+                aria-label="Seleziona file PDF"
+              />
+              <Button variant="professional" size="lg" onClick={() => inputRef.current?.click()}>
                 Seleziona file PDF
               </Button>
             </div>
