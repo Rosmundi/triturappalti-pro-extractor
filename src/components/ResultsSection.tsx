@@ -27,7 +27,7 @@ interface Lead {
   client: string;
   amount: string;
   deadline: string;
-  cig: string;
+  projectId: string;
   category: string;
   location: string;
   // Dati del singolo progettista/lead
@@ -50,7 +50,7 @@ const mockLeads: Lead[] = [
     client: "V.le Cittadini 52100 Arezzo (AR)",
     amount: "€1.685.000",
     deadline: "2027/06",
-    cig: "CIG123456789",
+    projectId: "PRJ-2024-001",
     category: "Ospedali",
     location: "Arezzo, Toscana",
     designerName: "Caneschi Alessandro",
@@ -69,7 +69,7 @@ const mockLeads: Lead[] = [
     client: "V.le Cittadini 52100 Arezzo (AR)",
     amount: "€1.685.000",
     deadline: "2027/06",
-    cig: "CIG123456789",
+    projectId: "PRJ-2024-001",
     category: "Ospedali",
     location: "Arezzo, Toscana",
     designerName: "Martini Francesco",
@@ -86,7 +86,7 @@ const mockLeads: Lead[] = [
     client: "V.le Cittadini 52100 Arezzo (AR)", 
     amount: "€1.685.000",
     deadline: "2027/06",
-    cig: "CIG123456789",
+    projectId: "PRJ-2024-001",
     category: "Ospedali",
     location: "Arezzo, Toscana",
     designerName: "Bianca Rossi",
@@ -103,7 +103,7 @@ const mockLeads: Lead[] = [
     client: "ASL Toscana Centro",
     amount: "€2.450.000",
     deadline: "2026/12",
-    cig: "CIG987654321", 
+    projectId: "PRJ-2024-002",
     category: "Ospedali",
     location: "Firenze, Toscana",
     designerName: "Marco Bianchi",
@@ -121,7 +121,7 @@ const mockLeads: Lead[] = [
     client: "ASL Toscana Centro",
     amount: "€2.450.000", 
     deadline: "2026/12",
-    cig: "CIG987654321",
+    projectId: "PRJ-2024-002",
     category: "Ospedali",
     location: "Firenze, Toscana",
     designerName: "Laura Verdi",
@@ -139,6 +139,14 @@ export const ResultsSection = () => {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
+
+  const clearAllLeads = () => {
+    setLeads([]);
+    toast({
+      title: "Lista azzerata",
+      description: "Tutti i lead sono stati rimossi",
+    });
+  };
 
   const startEditing = (id: string) => {
     setEditingId(id);
@@ -205,11 +213,11 @@ export const ResultsSection = () => {
 
   const exportToGoogleSheets = () => {
     const csvContent = [
-      ["Progetto", "Cliente", "CIG", "Importo", "Scadenza", "Progettista", "Tipologia", "Azienda", "Email", "Telefono", "Indirizzo", "Status", "Note", "File Origine"],
+      ["Progetto", "Cliente", "ID Progetto", "Importo", "Scadenza", "Progettista", "Tipologia", "Azienda", "Email", "Telefono", "Indirizzo", "Status", "Note", "File Origine"],
       ...leads.map(lead => [
         lead.project,
         lead.client,
-        lead.cig,
+        lead.projectId,
         lead.amount,
         lead.deadline,
         lead.designerName,
@@ -247,7 +255,17 @@ export const ResultsSection = () => {
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-8">
-            <h3 className="text-3xl font-bold mb-4">Progettisti estratti</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-3xl font-bold">Progettisti estratti</h3>
+              <Button 
+                variant="outline" 
+                onClick={clearAllLeads}
+                className="text-destructive hover:text-destructive"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Azzera lista
+              </Button>
+            </div>
             <p className="text-muted-foreground text-lg">
               Controlla e modifica i dati dei progettisti prima dell'export
             </p>
@@ -269,7 +287,7 @@ export const ResultsSection = () => {
                     )}
                     <div className="flex items-center gap-2 mb-2">
                       <Badge variant="secondary">{lead.category}</Badge>
-                      <Badge variant="outline">{lead.cig}</Badge>
+                      <Badge variant="outline">{lead.projectId}</Badge>
                       <Badge variant="outline" className="text-xs">{lead.sourceFile}</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mb-4">{lead.client}</p>

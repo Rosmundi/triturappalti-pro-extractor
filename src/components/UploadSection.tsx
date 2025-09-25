@@ -106,30 +106,9 @@ export const UploadSection = () => {
               : f
           ));
           
-          // Genera multipli lead per questo PDF
-          const leadCount = Math.floor(Math.random() * 4) + 2; // 2-5 lead per PDF
-          const mockProjects = [
-            {
-              name: `Progetto estratto da ${file.name}`,
-              client: "Comune di " + ["Milano", "Roma", "Napoli", "Torino", "Palermo"][Math.floor(Math.random() * 5)],
-              amount: `€${(Math.random() * 3000000 + 500000).toLocaleString('it-IT')}`,
-              cig: `CIG${Math.random().toString().substr(2, 9)}`,
-              category: ["Ospedali", "Scuole", "Uffici Pubblici", "Infrastrutture"][Math.floor(Math.random() * 4)]
-            }
-          ];
-          
-          const designerTypes = ["Architetto", "Ingegnere Civile", "Ingegnere Strutturale", "Ingegnere Impiantista", "Geologo", "Ingegnere Biomedico"];
-          const companies = ["Studio Associato", "Engineering Solutions", "Progettazioni Moderne", "Tech Design", "Professional Studio"];
-          
-          console.log(`Estratti ${leadCount} progettisti da ${file.name}:`, {
-            project: mockProjects[0],
-            leadCount,
-            extractedDesigners: Array.from({length: leadCount}, (_, i) => ({
-              name: `Progettista ${i + 1}`,
-              type: designerTypes[Math.floor(Math.random() * designerTypes.length)],
-              company: companies[Math.floor(Math.random() * companies.length)]
-            }))
-          });
+          // Simula estrazione reale di lead da PDF
+          // Qui in futuro andrà la vera elaborazione OCR/AI
+          console.log(`Elaborazione completata per ${file.name} - In attesa di vera implementazione OCR/AI`);
           
           clearInterval(interval);
           resolve();
@@ -157,7 +136,7 @@ export const UploadSection = () => {
   };
 
   return (
-    <section className="py-16 bg-gradient-subtle">
+    <section className="py-16 bg-gradient-subtle" data-section="upload">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">

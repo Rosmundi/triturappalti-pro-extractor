@@ -25,13 +25,17 @@ export const HeroSection = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button variant="hero" size="lg" className="text-lg px-8 py-3">
+              <Button 
+                variant="hero" 
+                size="lg" 
+                className="text-lg px-8 py-3"
+                onClick={() => {
+                  const uploadSection = document.querySelector('section[data-section="upload"]');
+                  uploadSection?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
                 <Upload className="h-5 w-5" />
                 Inizia subito
-              </Button>
-              <Button variant="professional" size="lg" className="text-lg px-8 py-3">
-                <FileText className="h-5 w-5" />
-                Vedi esempio
               </Button>
             </div>
             
