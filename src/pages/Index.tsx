@@ -1,16 +1,43 @@
+import { useState } from "react";
 import { Header } from "@/components/Header";
 import { HeroSection } from "@/components/HeroSection";
 import { UploadSection } from "@/components/UploadSection";
 import { ResultsSection } from "@/components/ResultsSection";
 
+interface Lead {
+  id: string;
+  project: string;
+  client: string;
+  amount: string;
+  deadline: string;
+  projectId: string;
+  category: string;
+  location: string;
+  designerName: string;
+  designerType: string;
+  designerCompany: string;
+  designerEmail?: string;
+  designerPhone?: string;
+  designerAddress?: string;
+  status: 'nuovo' | 'contattato' | 'interessato' | 'non_interessato';
+  notes?: string;
+  sourceFile: string;
+}
+
 const Index = () => {
+  const [extractedLeads, setExtractedLeads] = useState<Lead[]>([]);
+
+  const handleLeadsExtracted = (newLeads: Lead[]) => {
+    setExtractedLeads(prev => [...prev, ...newLeads]);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main>
         <HeroSection />
-        <UploadSection />
-        <ResultsSection />
+        <UploadSection onLeadsExtracted={handleLeadsExtracted} />
+        <ResultsSection leads={extractedLeads} onLeadsChange={setExtractedLeads} />
       </main>
       
       <footer className="py-12 border-t border-primary/10 bg-gradient-to-r from-background to-brand-light">

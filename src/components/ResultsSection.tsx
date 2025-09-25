@@ -42,106 +42,19 @@ interface Lead {
   sourceFile: string; // nome del PDF da cui è stato estratto
 }
 
-const mockLeads: Lead[] = [
-  // Lead dal Centro salute mentale
-  {
-    id: "1",
-    project: "Centro salute mentale",
-    client: "V.le Cittadini 52100 Arezzo (AR)",
-    amount: "€1.685.000",
-    deadline: "2027/06",
-    projectId: "PRJ-2024-001",
-    category: "Ospedali",
-    location: "Arezzo, Toscana",
-    designerName: "Caneschi Alessandro",
-    designerType: "Architetto",
-    designerCompany: "Studio Caneschi & Associati",
-    designerEmail: "a.caneschi@studioarch.it",
-    designerPhone: "+39055752551",
-    designerAddress: "Via Roma 12, Arezzo",
-    status: "nuovo",
-    notes: "Responsabile della progettazione architettonica",
-    sourceFile: "bando_centro_salute_mentale.pdf"
-  },
-  {
-    id: "2",
-    project: "Centro salute mentale", 
-    client: "V.le Cittadini 52100 Arezzo (AR)",
-    amount: "€1.685.000",
-    deadline: "2027/06",
-    projectId: "PRJ-2024-001",
-    category: "Ospedali",
-    location: "Arezzo, Toscana",
-    designerName: "Martini Francesco",
-    designerType: "Ingegnere Strutturale",
-    designerCompany: "Ingegneria Strutturale Toscana",
-    designerEmail: "f.martini@iststrutturale.it",
-    designerPhone: "+39055987654",
-    status: "nuovo",
-    sourceFile: "bando_centro_salute_mentale.pdf"
-  },
-  {
-    id: "3",
-    project: "Centro salute mentale",
-    client: "V.le Cittadini 52100 Arezzo (AR)", 
-    amount: "€1.685.000",
-    deadline: "2027/06",
-    projectId: "PRJ-2024-001",
-    category: "Ospedali",
-    location: "Arezzo, Toscana",
-    designerName: "Bianca Rossi",
-    designerType: "Ingegnere Impiantista",
-    designerCompany: "Impianti Moderni SRL",
-    designerEmail: "b.rossi@impiantimoderni.it",
-    status: "nuovo",
-    sourceFile: "bando_centro_salute_mentale.pdf"
-  },
-  // Lead dall'ospedale pediatrico
-  {
-    id: "4",
-    project: "Ristrutturazione ospedale pediatrico",
-    client: "ASL Toscana Centro",
-    amount: "€2.450.000",
-    deadline: "2026/12",
-    projectId: "PRJ-2024-002",
-    category: "Ospedali",
-    location: "Firenze, Toscana",
-    designerName: "Marco Bianchi",
-    designerType: "Architetto",
-    designerCompany: "Bianchi Architettura",
-    designerEmail: "m.bianchi@bianchiarc.it",
-    designerPhone: "+39055123456",
-    status: "nuovo",
-    notes: "Specializzato in strutture sanitarie pediatriche",
-    sourceFile: "bando_ospedale_pediatrico.pdf"
-  },
-  {
-    id: "5", 
-    project: "Ristrutturazione ospedale pediatrico",
-    client: "ASL Toscana Centro",
-    amount: "€2.450.000", 
-    deadline: "2026/12",
-    projectId: "PRJ-2024-002",
-    category: "Ospedali",
-    location: "Firenze, Toscana",
-    designerName: "Laura Verdi",
-    designerType: "Ingegnere Biomedico",
-    designerCompany: "Biotech Engineering",
-    designerEmail: "l.verdi@biotech.it",
-    status: "nuovo",
-    sourceFile: "bando_ospedale_pediatrico.pdf"
-  }
-];
+interface ResultsSectionProps {
+  leads: Lead[];
+  onLeadsChange: (leads: Lead[]) => void;
+}
 
-export const ResultsSection = () => {
-  const [leads, setLeads] = useState<Lead[]>(mockLeads);
+export const ResultsSection = ({ leads, onLeadsChange }: ResultsSectionProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [webhookUrl, setWebhookUrl] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
   const clearAllLeads = () => {
-    setLeads([]);
+    onLeadsChange([]);
     toast({
       title: "Lista azzerata",
       description: "Tutti i lead sono stati rimossi",
@@ -165,9 +78,10 @@ export const ResultsSection = () => {
   };
 
   const updateLead = (id: string, field: keyof Lead, value: string) => {
-    setLeads(prev => prev.map(lead => 
+    const updatedLeads = leads.map(lead => 
       lead.id === id ? { ...lead, [field]: value } : lead
-    ));
+    );
+    onLeadsChange(updatedLeads);
   };
 
   const exportToWebhook = async () => {

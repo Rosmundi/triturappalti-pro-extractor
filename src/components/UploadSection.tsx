@@ -5,6 +5,26 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileText, X, CheckCircle, Play, Loader2 } from "lucide-react";
 
+interface Lead {
+  id: string;
+  project: string;
+  client: string;
+  amount: string;
+  deadline: string;
+  projectId: string;
+  category: string;
+  location: string;
+  designerName: string;
+  designerType: string;
+  designerCompany: string;
+  designerEmail?: string;
+  designerPhone?: string;
+  designerAddress?: string;
+  status: 'nuovo' | 'contattato' | 'interessato' | 'non_interessato';
+  notes?: string;
+  sourceFile: string;
+}
+
 interface UploadedFile {
   id: string;
   name: string;
@@ -13,7 +33,11 @@ interface UploadedFile {
   progress: number;
 }
 
-export const UploadSection = () => {
+interface UploadSectionProps {
+  onLeadsExtracted: (leads: Lead[]) => void;
+}
+
+export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -107,6 +131,10 @@ export const UploadSection = () => {
           // Qui in futuro andrà la vera elaborazione OCR/AI
           console.log(`Elaborazione completata per file ${fileId} - In attesa di vera implementazione OCR/AI`);
           
+          // Genera lead simulati per il file processato
+          const simulatedLeads = generateSimulatedLeads(fileId);
+          onLeadsExtracted(simulatedLeads);
+          
           clearInterval(interval);
           resolve();
         } else {
@@ -122,6 +150,32 @@ export const UploadSection = () => {
 
   const removeFile = (fileId: string) => {
     setFiles(prev => prev.filter(file => file.id !== fileId));
+  };
+
+  const generateSimulatedLeads = (fileId: string): Lead[] => {
+    // Simula l'estrazione di 2-4 progettisti per file
+    const numLeads = Math.floor(Math.random() * 3) + 2;
+    const leads: Lead[] = [];
+    
+    for (let i = 0; i < numLeads; i++) {
+      leads.push({
+        id: `${fileId}-lead-${i}`,
+        project: `Progetto estratto da PDF ${fileId.slice(0, 8)}`,
+        client: "Cliente da estrarre",
+        amount: "Da definire",
+        deadline: "Da estrarre",
+        projectId: `ID-${Date.now()}-${i}`,
+        category: "Da classificare",
+        location: "Da estrarre",
+        designerName: `Progettista ${i + 1}`,
+        designerType: "Da identificare",
+        designerCompany: "Da estrarre",
+        status: "nuovo",
+        sourceFile: files.find(f => f.id === fileId)?.name || `file-${fileId.slice(0, 8)}.pdf`
+      });
+    }
+    
+    return leads;
   };
 
   const formatFileSize = (bytes: number) => {
