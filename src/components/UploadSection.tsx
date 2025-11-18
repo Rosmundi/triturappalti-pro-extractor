@@ -4,25 +4,15 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileText, X, CheckCircle, Play, Loader2 } from "lucide-react";
+import { WEBHOOKS } from "@/config/webhooks";
 
 interface Lead {
   id: string;
-  project: string;
-  client: string;
-  amount: string;
-  deadline: string;
-  projectId: string;
-  category: string;
-  location: string;
-  designerName: string;
-  designerType: string;
-  designerCompany: string;
-  designerEmail?: string;
-  designerPhone?: string;
-  designerAddress?: string;
-  status: 'nuovo' | 'contattato' | 'interessato' | 'non_interessato';
-  notes?: string;
-  sourceFile: string;
+  cigAppalto: string;
+  descrizioneAppalto: string;
+  leadName: string;
+  leadEmail: string;
+  leadNumber: string;
 }
 
 interface UploadedFile {
@@ -31,6 +21,7 @@ interface UploadedFile {
   size: number;
   status: 'uploaded' | 'processing' | 'completed' | 'error';
   progress: number;
+  file: File; // Store the actual file object
 }
 
 interface UploadSectionProps {
@@ -41,7 +32,6 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [webhookUrl, setWebhookUrl] = useState("");
   const { toast } = useToast();
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -63,7 +53,8 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
         name: file.name,
         size: file.size,
         status: 'uploaded',
-        progress: 0
+        progress: 0,
+        file: file // Store the actual file
       };
       
       setFiles(prev => [...prev, newFile]);
@@ -102,15 +93,6 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
       return;
     }
 
-    if (!webhookUrl || !webhookUrl.startsWith('http')) {
-      toast({
-        title: "Webhook n8n richiesto",
-        description: "Inserisci l'URL del webhook n8n per elaborare i PDF",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsProcessing(true);
     
     toast({
@@ -132,8 +114,8 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
   };
 
   const sendToN8n = async (fileId: string): Promise<void> => {
-    const file = files.find(f => f.id === fileId);
-    if (!file) return;
+    const uploadedFile = files.find(f => f.id === fileId);
+    if (!uploadedFile) return;
 
     setFiles(prev => prev.map(f => 
       f.id === fileId 
@@ -142,38 +124,34 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
     ));
 
     try {
-      // Qui invieremo il file reale a n8n
-      // Per ora simuliamo l'invio con progress
-      console.log(`Invio file ${file.name} a n8n webhook: ${webhookUrl}`);
+      console.log(`Invio file ${uploadedFile.name} a n8n webhook`);
       
-      // Simula progress upload
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += Math.random() * 20 + 10;
-        
-        if (progress >= 100) {
-          setFiles(prev => prev.map(f => 
-            f.id === fileId 
-              ? { ...f, status: 'completed', progress: 100 }
-              : f
-          ));
-          clearInterval(interval);
-        } else {
-          setFiles(prev => prev.map(f => 
-            f.id === fileId 
-              ? { ...f, progress: Math.min(progress, 95) }
-              : f
-          ));
-        }
-      }, 400);
+      const formData = new FormData();
+      formData.append('file', uploadedFile.file);
+      formData.append('filename', uploadedFile.name);
+      
+      const response = await fetch(WEBHOOKS.INVIO_PDF, {
+        method: 'POST',
+        body: formData,
+      });
 
-      // TODO: Implementare invio reale del file PDF a n8n
-      // const formData = new FormData();
-      // formData.append('file', file);
-      // const response = await fetch(webhookUrl, {
-      //   method: 'POST',
-      //   body: formData
-      // });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Risposta da n8n:', result);
+
+      setFiles(prev => prev.map(f => 
+        f.id === fileId 
+          ? { ...f, status: 'completed', progress: 100 }
+          : f
+      ));
+
+      // If n8n returns leads immediately, extract them
+      if (result.leads && Array.isArray(result.leads)) {
+        onLeadsExtracted(result.leads);
+      }
 
     } catch (error) {
       console.error('Errore invio a n8n:', error);
@@ -182,6 +160,12 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
           ? { ...f, status: 'error', progress: 0 }
           : f
       ));
+      
+      toast({
+        title: "Errore",
+        description: "Impossibile inviare il file a n8n. Riprova.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -207,26 +191,6 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
               Trascina i file PDF dei bandi pubblici qui sotto o clicca per selezionarli
             </p>
           </div>
-
-          <Card className="p-6 mb-8">
-            <h4 className="text-lg font-semibold mb-4">Configurazione n8n</h4>
-            <div className="space-y-2">
-              <label htmlFor="webhook" className="text-sm font-medium">
-                Webhook URL n8n per elaborazione PDF
-              </label>
-              <input
-                id="webhook"
-                type="url"
-                placeholder="https://your-n8n-instance.com/webhook/..."
-                value={webhookUrl}
-                onChange={(e) => setWebhookUrl(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border border-input bg-background text-foreground"
-              />
-              <p className="text-xs text-muted-foreground">
-                I file PDF verranno inviati a questo webhook per l'elaborazione con n8n
-              </p>
-            </div>
-          </Card>
 
           <Card className="p-8 mb-8">
             <div

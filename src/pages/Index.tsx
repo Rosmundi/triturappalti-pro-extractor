@@ -6,22 +6,11 @@ import { ResultsSection } from "@/components/ResultsSection";
 
 interface Lead {
   id: string;
-  project: string;
-  client: string;
-  amount: string;
-  deadline: string;
-  projectId: string;
-  category: string;
-  location: string;
-  designerName: string;
-  designerType: string;
-  designerCompany: string;
-  designerEmail?: string;
-  designerPhone?: string;
-  designerAddress?: string;
-  status: 'nuovo' | 'contattato' | 'interessato' | 'non_interessato';
-  notes?: string;
-  sourceFile: string;
+  cigAppalto: string;
+  descrizioneAppalto: string;
+  leadName: string;
+  leadEmail: string;
+  leadNumber: string;
 }
 
 const Index = () => {
