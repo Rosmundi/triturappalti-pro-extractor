@@ -41,6 +41,7 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState("");
   const { toast } = useToast();
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -101,37 +102,54 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
       return;
     }
 
+    if (!webhookUrl || !webhookUrl.startsWith('http')) {
+      toast({
+        title: "Webhook n8n richiesto",
+        description: "Inserisci l'URL del webhook n8n per elaborare i PDF",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
     
     toast({
       title: "Elaborazione avviata",
-      description: `Elaborazione di ${uploadedFiles.length} file PDF in corso...`,
+      description: `Invio di ${uploadedFiles.length} PDF a n8n per elaborazione...`,
     });
 
     // Process each file
     for (const file of uploadedFiles) {
-      await simulateProcessing(file.id);
+      await sendToN8n(file.id);
     }
     
     setIsProcessing(false);
     
     toast({
-      title: "Elaborazione completata",
-      description: "Tutti i lead sono stati estratti con successo",
+      title: "File inviati a n8n",
+      description: "I PDF sono stati inviati. Attendi il ritorno dei contatti elaborati.",
     });
   };
 
-  const simulateProcessing = (fileId: string): Promise<void> => {
-    return new Promise((resolve) => {
-      setFiles(prev => prev.map(f => 
-        f.id === fileId 
-          ? { ...f, status: 'processing', progress: 0 }
-          : f
-      ));
+  const sendToN8n = async (fileId: string): Promise<void> => {
+    const file = files.find(f => f.id === fileId);
+    if (!file) return;
 
+    setFiles(prev => prev.map(f => 
+      f.id === fileId 
+        ? { ...f, status: 'processing', progress: 0 }
+        : f
+    ));
+
+    try {
+      // Qui invieremo il file reale a n8n
+      // Per ora simuliamo l'invio con progress
+      console.log(`Invio file ${file.name} a n8n webhook: ${webhookUrl}`);
+      
+      // Simula progress upload
       let progress = 0;
       const interval = setInterval(() => {
-        progress += Math.random() * 15 + 5;
+        progress += Math.random() * 20 + 10;
         
         if (progress >= 100) {
           setFiles(prev => prev.map(f => 
@@ -139,56 +157,36 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
               ? { ...f, status: 'completed', progress: 100 }
               : f
           ));
-          
-          // Simula estrazione reale di lead da PDF
-          // Qui in futuro andrà la vera elaborazione OCR/AI
-          console.log(`Elaborazione completata per file ${fileId} - In attesa di vera implementazione OCR/AI`);
-          
-          // Genera lead simulati per il file processato
-          const simulatedLeads = generateSimulatedLeads(fileId);
-          onLeadsExtracted(simulatedLeads);
-          
           clearInterval(interval);
-          resolve();
         } else {
           setFiles(prev => prev.map(f => 
             f.id === fileId 
-              ? { ...f, progress }
+              ? { ...f, progress: Math.min(progress, 95) }
               : f
           ));
         }
-      }, 600);
-    });
+      }, 400);
+
+      // TODO: Implementare invio reale del file PDF a n8n
+      // const formData = new FormData();
+      // formData.append('file', file);
+      // const response = await fetch(webhookUrl, {
+      //   method: 'POST',
+      //   body: formData
+      // });
+
+    } catch (error) {
+      console.error('Errore invio a n8n:', error);
+      setFiles(prev => prev.map(f => 
+        f.id === fileId 
+          ? { ...f, status: 'error', progress: 0 }
+          : f
+      ));
+    }
   };
 
   const removeFile = (fileId: string) => {
     setFiles(prev => prev.filter(file => file.id !== fileId));
-  };
-
-  const generateSimulatedLeads = (fileId: string): Lead[] => {
-    // Simula l'estrazione di 2-4 progettisti per file
-    const numLeads = Math.floor(Math.random() * 3) + 2;
-    const leads: Lead[] = [];
-    
-    for (let i = 0; i < numLeads; i++) {
-      leads.push({
-        id: `${fileId}-lead-${i}`,
-        project: `Progetto estratto da PDF ${fileId.slice(0, 8)}`,
-        client: "Cliente da estrarre",
-        amount: "Da definire",
-        deadline: "Da estrarre",
-        projectId: `ID-${Date.now()}-${i}`,
-        category: "Da classificare",
-        location: "Da estrarre",
-        designerName: `Progettista ${i + 1}`,
-        designerType: "Da identificare",
-        designerCompany: "Da estrarre",
-        status: "nuovo",
-        sourceFile: files.find(f => f.id === fileId)?.name || `file-${fileId.slice(0, 8)}.pdf`
-      });
-    }
-    
-    return leads;
   };
 
   const formatFileSize = (bytes: number) => {
@@ -209,6 +207,26 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
               Trascina i file PDF dei bandi pubblici qui sotto o clicca per selezionarli
             </p>
           </div>
+
+          <Card className="p-6 mb-8">
+            <h4 className="text-lg font-semibold mb-4">Configurazione n8n</h4>
+            <div className="space-y-2">
+              <label htmlFor="webhook" className="text-sm font-medium">
+                Webhook URL n8n per elaborazione PDF
+              </label>
+              <input
+                id="webhook"
+                type="url"
+                placeholder="https://your-n8n-instance.com/webhook/..."
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg border border-input bg-background text-foreground"
+              />
+              <p className="text-xs text-muted-foreground">
+                I file PDF verranno inviati a questo webhook per l'elaborazione con n8n
+              </p>
+            </div>
+          </Card>
 
           <Card className="p-8 mb-8">
             <div
