@@ -205,7 +205,7 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
 
       if (uploadError) throw uploadError;
 
-      // Insert all leads with CIG and description per lead
+      // Insert all leads with ALL fields from n8n
       const leadsToInsert = leadsArray.map(lead => ({
         upload_id: uploadData.id,
         lead_name: lead.company || lead.full_name || 'N/A',
@@ -213,6 +213,23 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
         lead_number: lead.phone_e164 || null,
         cig_appalto: lead.cig || null,
         descrizione_appalto: lead.title || null,
+        project_id: lead.project_id || null,
+        value_eur: lead.value_eur || null,
+        phase: lead.phase || null,
+        cup: lead.cup || null,
+        appalto_location: lead.appalto_location || null,
+        entity_role: lead.entity_role || null,
+        lead_kind: lead.lead_kind || null,
+        lead_subtype: lead.lead_subtype || null,
+        full_name: lead.full_name || null,
+        role_title: lead.role_title || null,
+        website: lead.website || null,
+        street: lead.street || null,
+        cap: lead.cap || null,
+        lead_city: lead.lead_city || null,
+        lead_province: lead.lead_province || null,
+        lead_region: lead.lead_region || null,
+        country: lead.country || null,
       }));
 
       const { error: leadError } = await supabase

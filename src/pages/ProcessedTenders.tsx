@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronDown, ChevronUp, Send, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Send, Loader2, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -23,6 +23,23 @@ interface Lead {
   lead_number: string | null;
   cig_appalto: string | null;
   descrizione_appalto: string | null;
+  project_id: string | null;
+  value_eur: string | null;
+  phase: string | null;
+  cup: string | null;
+  appalto_location: string | null;
+  entity_role: string | null;
+  lead_kind: string | null;
+  lead_subtype: string | null;
+  full_name: string | null;
+  role_title: string | null;
+  website: string | null;
+  street: string | null;
+  cap: string | null;
+  lead_city: string | null;
+  lead_province: string | null;
+  lead_region: string | null;
+  country: string | null;
 }
 
 interface Upload {
@@ -110,6 +127,41 @@ export default function ProcessedTenders() {
     });
   };
 
+  const deleteUpload = async (uploadId: string) => {
+    try {
+      // First delete all associated leads
+      const { error: leadsError } = await supabase
+        .from('leads')
+        .delete()
+        .eq('upload_id', uploadId);
+
+      if (leadsError) throw leadsError;
+
+      // Then delete the upload
+      const { error: uploadError } = await supabase
+        .from('uploads')
+        .delete()
+        .eq('id', uploadId);
+
+      if (uploadError) throw uploadError;
+
+      toast({
+        title: "Caricamento eliminato",
+        description: "Il caricamento e tutti i lead associati sono stati eliminati",
+      });
+
+      // Refresh the list
+      fetchUploads();
+    } catch (error) {
+      console.error('Errore eliminazione:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile eliminare il caricamento",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getSelectedLeadsForUpload = (uploadId: string, allLeads: Lead[]) => {
     const selectedIds = selectedLeads[uploadId] || new Set();
     return allLeads.filter(lead => selectedIds.has(lead.id));
@@ -195,21 +247,35 @@ export default function ProcessedTenders() {
                 <Card key={upload.id}>
                   <CardHeader 
                     className="cursor-pointer hover:bg-accent/50 transition-colors"
-                    onClick={() => toggleExpand(upload.id)}
                   >
                     <div className="flex justify-between items-start">
-                      <div className="flex-1">
+                      <div className="flex-1" onClick={() => toggleExpand(upload.id)}>
                         <CardTitle className="text-xl mb-2">{upload.filename}</CardTitle>
                         <div className="text-sm text-muted-foreground space-y-1">
                           <p><strong>Caricato:</strong> {new Date(upload.uploaded_at).toLocaleString('it-IT')}</p>
                           <p><strong>Lead trovati:</strong> {upload.leads.length}</p>
                         </div>
                       </div>
-                      {expandedUploadId === upload.id ? (
-                        <ChevronUp className="h-5 w-5" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5" />
-                      )}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteUpload(upload.id);
+                          }}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <div onClick={() => toggleExpand(upload.id)}>
+                          {expandedUploadId === upload.id ? (
+                            <ChevronUp className="h-5 w-5" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5" />
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </CardHeader>
                   
@@ -223,37 +289,61 @@ export default function ProcessedTenders() {
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  <TableHead className="w-12">
-                                    <input
-                                      type="checkbox"
-                                      checked={(selectedLeads[upload.id]?.size || 0) === upload.leads.length && upload.leads.length > 0}
-                                      onChange={() => toggleSelectAll(upload.id, upload.leads)}
-                                      className="cursor-pointer"
-                                    />
-                                  </TableHead>
-                                  <TableHead>CIG</TableHead>
-                                  <TableHead>Descrizione</TableHead>
-                                  <TableHead>Nome Lead</TableHead>
-                                  <TableHead>Email</TableHead>
-                                  <TableHead>Numero</TableHead>
+                                   <TableHead className="w-12">
+                                     <input
+                                       type="checkbox"
+                                       checked={(selectedLeads[upload.id]?.size || 0) === upload.leads.length && upload.leads.length > 0}
+                                       onChange={() => toggleSelectAll(upload.id, upload.leads)}
+                                       className="cursor-pointer"
+                                     />
+                                   </TableHead>
+                                   <TableHead>CIG</TableHead>
+                                   <TableHead>Descrizione</TableHead>
+                                   <TableHead>Azienda/Nome</TableHead>
+                                   <TableHead>Email</TableHead>
+                                   <TableHead>Telefono</TableHead>
+                                   <TableHead>Tipo</TableHead>
+                                   <TableHead>Valore €</TableHead>
+                                   <TableHead>Fase</TableHead>
+                                   <TableHead>Località</TableHead>
+                                   <TableHead>Città</TableHead>
+                                   <TableHead>Regione</TableHead>
+                                   <TableHead>Website</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {upload.leads.map((lead) => (
                                   <TableRow key={lead.id}>
-                                    <TableCell>
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedLeads[upload.id]?.has(lead.id) || false}
-                                        onChange={() => toggleLeadSelection(upload.id, lead.id)}
-                                        className="cursor-pointer"
-                                      />
-                                    </TableCell>
-                                    <TableCell className="font-medium">{lead.cig_appalto || '-'}</TableCell>
-                                    <TableCell>{lead.descrizione_appalto || '-'}</TableCell>
-                                    <TableCell className="font-medium">{lead.lead_name}</TableCell>
-                                    <TableCell>{lead.lead_email || '-'}</TableCell>
-                                    <TableCell>{lead.lead_number || '-'}</TableCell>
+                                     <TableCell>
+                                       <input
+                                         type="checkbox"
+                                         checked={selectedLeads[upload.id]?.has(lead.id) || false}
+                                         onChange={() => toggleLeadSelection(upload.id, lead.id)}
+                                         className="cursor-pointer"
+                                       />
+                                     </TableCell>
+                                     <TableCell className="font-medium">{lead.cig_appalto || '-'}</TableCell>
+                                     <TableCell className="max-w-xs truncate">{lead.descrizione_appalto || '-'}</TableCell>
+                                     <TableCell className="font-medium">{lead.lead_name}</TableCell>
+                                     <TableCell>{lead.lead_email || '-'}</TableCell>
+                                     <TableCell>{lead.lead_number || '-'}</TableCell>
+                                     <TableCell>
+                                       <span className="text-xs bg-secondary px-2 py-1 rounded">
+                                         {lead.lead_kind || '-'}
+                                       </span>
+                                     </TableCell>
+                                     <TableCell>{lead.value_eur ? `€${parseInt(lead.value_eur).toLocaleString()}` : '-'}</TableCell>
+                                     <TableCell>{lead.phase || '-'}</TableCell>
+                                     <TableCell className="max-w-xs truncate">{lead.appalto_location || '-'}</TableCell>
+                                     <TableCell>{lead.lead_city || '-'}</TableCell>
+                                     <TableCell>{lead.lead_region || '-'}</TableCell>
+                                     <TableCell>
+                                       {lead.website ? (
+                                         <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                           Link
+                                         </a>
+                                       ) : '-'}
+                                     </TableCell>
                                   </TableRow>
                                 ))}
                               </TableBody>
