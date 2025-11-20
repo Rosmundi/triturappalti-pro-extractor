@@ -27,10 +27,9 @@ interface Lead {
   value_eur: string | null;
   phase: string | null;
   cup: string | null;
-  appalto_location: string | null;
   entity_role: string | null;
-  lead_kind: string | null;
-  lead_subtype: string | null;
+  lead_category: string | null;
+  quality_status: string | null;
   full_name: string | null;
   role_title: string | null;
   website: string | null;
@@ -302,13 +301,14 @@ export default function ProcessedTenders() {
                                    <TableHead>Azienda/Nome</TableHead>
                                    <TableHead>Email</TableHead>
                                    <TableHead>Telefono</TableHead>
-                                   <TableHead>Tipo</TableHead>
+                                   <TableHead>Categoria</TableHead>
+                                   <TableHead>Ruolo</TableHead>
                                    <TableHead>Valore €</TableHead>
                                    <TableHead>Fase</TableHead>
-                                   <TableHead>Località</TableHead>
                                    <TableHead>Città</TableHead>
                                    <TableHead>Regione</TableHead>
                                    <TableHead>Website</TableHead>
+                                   <TableHead>Qualità</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -329,12 +329,12 @@ export default function ProcessedTenders() {
                                      <TableCell>{lead.lead_number || '-'}</TableCell>
                                      <TableCell>
                                        <span className="text-xs bg-secondary px-2 py-1 rounded">
-                                         {lead.lead_kind || '-'}
+                                         {lead.lead_category || '-'}
                                        </span>
                                      </TableCell>
+                                     <TableCell className="text-xs">{lead.entity_role || '-'}</TableCell>
                                      <TableCell>{lead.value_eur ? `€${parseInt(lead.value_eur).toLocaleString()}` : '-'}</TableCell>
                                      <TableCell>{lead.phase || '-'}</TableCell>
-                                     <TableCell className="max-w-xs truncate">{lead.appalto_location || '-'}</TableCell>
                                      <TableCell>{lead.lead_city || '-'}</TableCell>
                                      <TableCell>{lead.lead_region || '-'}</TableCell>
                                      <TableCell>
@@ -343,6 +343,11 @@ export default function ProcessedTenders() {
                                            Link
                                          </a>
                                        ) : '-'}
+                                     </TableCell>
+                                     <TableCell>
+                                       <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                         {lead.quality_status || '-'}
+                                       </span>
                                      </TableCell>
                                   </TableRow>
                                 ))}
