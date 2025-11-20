@@ -149,9 +149,11 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
           : f
       ));
 
-      // Save to database
-      if (result) {
+      // Save all leads to database
+      if (Array.isArray(result) && result.length > 0) {
         await saveToDatabase(uploadedFile.name, result);
+      } else {
+        throw new Error('Formato risposta non valido');
       }
 
     } catch (error) {
@@ -174,7 +176,7 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
     setFiles(prev => prev.filter(file => file.id !== fileId));
   };
 
-  const saveToDatabase = async (filename: string, data: any) => {
+  const saveToDatabase = async (filename: string, leadsArray: any[]) => {
     try {
       // First create the upload record
       const { data: uploadData, error: uploadError } = await supabase
@@ -182,31 +184,31 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
         .insert({
           filename,
           status: 'completed',
-          cig_appalto: data.cig || null,
-          descrizione_appalto: data.title || null,
         })
         .select()
         .single();
 
       if (uploadError) throw uploadError;
 
-      // Then create lead records
-      const leadData = {
+      // Insert all leads with CIG and description per lead
+      const leadsToInsert = leadsArray.map(lead => ({
         upload_id: uploadData.id,
-        lead_name: data.company || data.full_name || 'N/A',
-        lead_email: data.email || null,
-        lead_number: data.phone_e164 || null,
-      };
+        lead_name: lead.company || lead.full_name || 'N/A',
+        lead_email: lead.email || null,
+        lead_number: lead.phone_e164 || null,
+        cig_appalto: lead.cig || null,
+        descrizione_appalto: lead.title || null,
+      }));
 
       const { error: leadError } = await supabase
         .from('leads')
-        .insert(leadData);
+        .insert(leadsToInsert);
 
       if (leadError) throw leadError;
 
       toast({
         title: "Dati salvati",
-        description: "I lead sono stati salvati nel database",
+        description: `${leadsArray.length} lead salvati nel database`,
       });
     } catch (error) {
       console.error('Errore salvataggio database:', error);
