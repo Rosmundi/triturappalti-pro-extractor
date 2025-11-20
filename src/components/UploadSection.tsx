@@ -131,7 +131,8 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
       formData.append('file', uploadedFile.file);
       formData.append('filename', uploadedFile.name);
       
-      const response = await fetch(WEBHOOKS.INVIO_PDF, {
+      // Call the edge function instead of n8n directly to avoid CORS issues
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-pdf`, {
         method: 'POST',
         body: formData,
       });
