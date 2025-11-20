@@ -151,14 +151,23 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
 
       // Normalizza la risposta di n8n per gestire correttamente tutti i lead
       // Può arrivare come:
-      // - array diretto di lead
-      // - oggetto con proprietà `leads`
-      // - singolo oggetto lead
+      // - array con oggetto contenente 'data': [{ data: [...] }]
+      // - array diretto di lead: [lead1, lead2, ...]
+      // - oggetto con proprietà `leads`: { leads: [...] }
+      // - oggetto con proprietà `data`: { data: [...] }
+      // - singolo oggetto lead: { lead }
       let leadsArray: any[] = [];
       if (Array.isArray(result)) {
-        leadsArray = result;
+        // Check if it's an array with an object containing 'data' array
+        if (result.length > 0 && result[0].data && Array.isArray(result[0].data)) {
+          leadsArray = result[0].data;
+        } else {
+          leadsArray = result;
+        }
       } else if (Array.isArray((result as any).leads)) {
         leadsArray = (result as any).leads;
+      } else if (Array.isArray((result as any).data)) {
+        leadsArray = (result as any).data;
       } else if (result) {
         leadsArray = [result];
       }
