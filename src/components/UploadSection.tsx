@@ -149,10 +149,23 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
           : f
       ));
 
-      // Handle both array and single object responses
-      const leadsArray = Array.isArray(result) ? result : [result];
+      // Normalizza la risposta di n8n per gestire correttamente tutti i lead
+      // Può arrivare come:
+      // - array diretto di lead
+      // - oggetto con proprietà `leads`
+      // - singolo oggetto lead
+      let leadsArray: any[] = [];
+      if (Array.isArray(result)) {
+        leadsArray = result;
+      } else if (Array.isArray((result as any).leads)) {
+        leadsArray = (result as any).leads;
+      } else if (result) {
+        leadsArray = [result];
+      }
       
-      if (leadsArray.length > 0 && leadsArray[0]) {
+      console.log('Lead estratti da n8n:', leadsArray.length, leadsArray);
+      
+      if (leadsArray.length > 0) {
         await saveToDatabase(uploadedFile.name, leadsArray);
       } else {
         throw new Error('Nessun lead trovato nella risposta');
