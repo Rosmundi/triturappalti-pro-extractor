@@ -149,11 +149,13 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
           : f
       ));
 
-      // Save all leads to database
-      if (Array.isArray(result) && result.length > 0) {
-        await saveToDatabase(uploadedFile.name, result);
+      // Handle both array and single object responses
+      const leadsArray = Array.isArray(result) ? result : [result];
+      
+      if (leadsArray.length > 0 && leadsArray[0]) {
+        await saveToDatabase(uploadedFile.name, leadsArray);
       } else {
-        throw new Error('Formato risposta non valido');
+        throw new Error('Nessun lead trovato nella risposta');
       }
 
     } catch (error) {
