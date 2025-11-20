@@ -1,12 +1,15 @@
 import { Button } from "@/components/ui/button";
-import { FileText, Settings, Download } from "lucide-react";
+import { FileText } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
 export const Header = () => {
+  const location = useLocation();
+  
   return (
     <header className="sticky top-0 z-50 w-full border-b border-primary/10 bg-background/80 backdrop-blur-md">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+          <Link to="/" className="flex items-center space-x-3">
             <div className="p-2 bg-gradient-to-br from-primary to-primary-glow rounded-lg shadow-elegant">
               <FileText className="h-6 w-6 text-white" />
             </div>
@@ -16,18 +19,26 @@ export const Header = () => {
               </h1>
               <p className="text-sm text-muted-foreground">Estrazione automatica lead da appalti</p>
             </div>
-          </div>
+          </Link>
           
-          <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm">
-              <Settings className="h-4 w-4" />
-              Impostazioni
-            </Button>
-            <Button variant="professional" size="sm">
-              <Download className="h-4 w-4" />
-              Esporta
-            </Button>
-          </div>
+          <nav className="flex items-center space-x-2">
+            <Link to="/">
+              <Button 
+                variant={location.pathname === "/" ? "default" : "ghost"}
+                size="sm"
+              >
+                Carica PDF
+              </Button>
+            </Link>
+            <Link to="/appalti-elaborati">
+              <Button 
+                variant={location.pathname === "/appalti-elaborati" ? "default" : "ghost"}
+                size="sm"
+              >
+                Appalti elaborati
+              </Button>
+            </Link>
+          </nav>
         </div>
       </div>
     </header>
