@@ -14,7 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      leads: {
+        Row: {
+          created_at: string
+          id: string
+          lead_email: string | null
+          lead_name: string
+          lead_number: string | null
+          upload_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_email?: string | null
+          lead_name: string
+          lead_number?: string | null
+          upload_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_email?: string | null
+          lead_name?: string
+          lead_number?: string | null
+          upload_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uploads: {
+        Row: {
+          cig_appalto: string | null
+          descrizione_appalto: string | null
+          filename: string
+          id: string
+          status: string
+          uploaded_at: string
+        }
+        Insert: {
+          cig_appalto?: string | null
+          descrizione_appalto?: string | null
+          filename: string
+          id?: string
+          status?: string
+          uploaded_at?: string
+        }
+        Update: {
+          cig_appalto?: string | null
+          descrizione_appalto?: string | null
+          filename?: string
+          id?: string
+          status?: string
+          uploaded_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

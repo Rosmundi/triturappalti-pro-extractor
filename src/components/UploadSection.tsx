@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileText, X, CheckCircle, Play, Loader2 } from "lucide-react";
 import { WEBHOOKS } from "@/config/webhooks";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Lead {
   id: string;
@@ -148,17 +149,9 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
           : f
       ));
 
-      // Transform n8n response to Lead object
+      // Save to database
       if (result) {
-        const lead: Lead = {
-          id: Date.now().toString() + Math.random(),
-          cigAppalto: result.cig || '',
-          descrizioneAppalto: result.title || '',
-          leadName: result.company || result.full_name || '',
-          leadEmail: result.email || result.phone_e164 || '',
-          leadNumber: result.phone_e164 || result.website || ''
-        };
-        onLeadsExtracted([lead]);
+        await saveToDatabase(uploadedFile.name, result);
       }
 
     } catch (error) {
@@ -179,6 +172,50 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
 
   const removeFile = (fileId: string) => {
     setFiles(prev => prev.filter(file => file.id !== fileId));
+  };
+
+  const saveToDatabase = async (filename: string, data: any) => {
+    try {
+      // First create the upload record
+      const { data: uploadData, error: uploadError } = await supabase
+        .from('uploads')
+        .insert({
+          filename,
+          status: 'completed',
+          cig_appalto: data.cig || null,
+          descrizione_appalto: data.title || null,
+        })
+        .select()
+        .single();
+
+      if (uploadError) throw uploadError;
+
+      // Then create lead records
+      const leadData = {
+        upload_id: uploadData.id,
+        lead_name: data.company || data.full_name || 'N/A',
+        lead_email: data.email || null,
+        lead_number: data.phone_e164 || null,
+      };
+
+      const { error: leadError } = await supabase
+        .from('leads')
+        .insert(leadData);
+
+      if (leadError) throw leadError;
+
+      toast({
+        title: "Dati salvati",
+        description: "I lead sono stati salvati nel database",
+      });
+    } catch (error) {
+      console.error('Errore salvataggio database:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare i dati nel database",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatFileSize = (bytes: number) => {
