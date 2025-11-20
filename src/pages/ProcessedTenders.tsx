@@ -20,6 +20,8 @@ interface Lead {
   lead_name: string;
   lead_email: string | null;
   lead_number: string | null;
+  cig_appalto: string | null;
+  descrizione_appalto: string | null;
 }
 
 interface Upload {
@@ -27,8 +29,6 @@ interface Upload {
   filename: string;
   uploaded_at: string;
   status: string;
-  cig_appalto: string | null;
-  descrizione_appalto: string | null;
   leads: Lead[];
 }
 
@@ -95,8 +95,6 @@ export default function ProcessedTenders() {
         },
         body: JSON.stringify({ 
           upload_id: upload.id,
-          cig_appalto: upload.cig_appalto,
-          descrizione_appalto: upload.descrizione_appalto,
           leads: upload.leads 
         }),
       });
@@ -159,12 +157,6 @@ export default function ProcessedTenders() {
                       <div className="flex-1">
                         <CardTitle className="text-xl mb-2">{upload.filename}</CardTitle>
                         <div className="text-sm text-muted-foreground space-y-1">
-                          {upload.cig_appalto && (
-                            <p><strong>CIG:</strong> {upload.cig_appalto}</p>
-                          )}
-                          {upload.descrizione_appalto && (
-                            <p><strong>Descrizione:</strong> {upload.descrizione_appalto}</p>
-                          )}
                           <p><strong>Caricato:</strong> {new Date(upload.uploaded_at).toLocaleString('it-IT')}</p>
                           <p><strong>Lead trovati:</strong> {upload.leads.length}</p>
                         </div>
@@ -187,6 +179,8 @@ export default function ProcessedTenders() {
                             <Table>
                               <TableHeader>
                                 <TableRow>
+                                  <TableHead>CIG</TableHead>
+                                  <TableHead>Descrizione</TableHead>
                                   <TableHead>Nome Lead</TableHead>
                                   <TableHead>Email</TableHead>
                                   <TableHead>Numero</TableHead>
@@ -195,6 +189,8 @@ export default function ProcessedTenders() {
                               <TableBody>
                                 {upload.leads.map((lead) => (
                                   <TableRow key={lead.id}>
+                                    <TableCell className="font-medium">{lead.cig_appalto || '-'}</TableCell>
+                                    <TableCell>{lead.descrizione_appalto || '-'}</TableCell>
                                     <TableCell className="font-medium">{lead.lead_name}</TableCell>
                                     <TableCell>{lead.lead_email || '-'}</TableCell>
                                     <TableCell>{lead.lead_number || '-'}</TableCell>

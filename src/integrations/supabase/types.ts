@@ -16,7 +16,9 @@ export type Database = {
     Tables: {
       leads: {
         Row: {
+          cig_appalto: string | null
           created_at: string
+          descrizione_appalto: string | null
           id: string
           lead_email: string | null
           lead_name: string
@@ -24,7 +26,9 @@ export type Database = {
           upload_id: string
         }
         Insert: {
+          cig_appalto?: string | null
           created_at?: string
+          descrizione_appalto?: string | null
           id?: string
           lead_email?: string | null
           lead_name: string
@@ -32,7 +36,9 @@ export type Database = {
           upload_id: string
         }
         Update: {
+          cig_appalto?: string | null
           created_at?: string
+          descrizione_appalto?: string | null
           id?: string
           lead_email?: string | null
           lead_name?: string
