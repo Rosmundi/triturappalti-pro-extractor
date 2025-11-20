@@ -148,9 +148,17 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
           : f
       ));
 
-      // If n8n returns leads immediately, extract them
-      if (result.leads && Array.isArray(result.leads)) {
-        onLeadsExtracted(result.leads);
+      // Transform n8n response to Lead object
+      if (result) {
+        const lead: Lead = {
+          id: Date.now().toString() + Math.random(),
+          cigAppalto: result.cig || '',
+          descrizioneAppalto: result.title || '',
+          leadName: result.company || result.full_name || '',
+          leadEmail: result.email || result.phone_e164 || '',
+          leadNumber: result.phone_e164 || result.website || ''
+        };
+        onLeadsExtracted([lead]);
       }
 
     } catch (error) {
