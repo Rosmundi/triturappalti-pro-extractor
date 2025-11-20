@@ -16,34 +16,85 @@ export type Database = {
     Tables: {
       leads: {
         Row: {
+          appalto_location: string | null
+          cap: string | null
           cig_appalto: string | null
+          country: string | null
           created_at: string
+          cup: string | null
           descrizione_appalto: string | null
+          entity_role: string | null
+          full_name: string | null
           id: string
+          lead_city: string | null
           lead_email: string | null
+          lead_kind: string | null
           lead_name: string
           lead_number: string | null
+          lead_province: string | null
+          lead_region: string | null
+          lead_subtype: string | null
+          phase: string | null
+          project_id: string | null
+          role_title: string | null
+          street: string | null
           upload_id: string
+          value_eur: string | null
+          website: string | null
         }
         Insert: {
+          appalto_location?: string | null
+          cap?: string | null
           cig_appalto?: string | null
+          country?: string | null
           created_at?: string
+          cup?: string | null
           descrizione_appalto?: string | null
+          entity_role?: string | null
+          full_name?: string | null
           id?: string
+          lead_city?: string | null
           lead_email?: string | null
+          lead_kind?: string | null
           lead_name: string
           lead_number?: string | null
+          lead_province?: string | null
+          lead_region?: string | null
+          lead_subtype?: string | null
+          phase?: string | null
+          project_id?: string | null
+          role_title?: string | null
+          street?: string | null
           upload_id: string
+          value_eur?: string | null
+          website?: string | null
         }
         Update: {
+          appalto_location?: string | null
+          cap?: string | null
           cig_appalto?: string | null
+          country?: string | null
           created_at?: string
+          cup?: string | null
           descrizione_appalto?: string | null
+          entity_role?: string | null
+          full_name?: string | null
           id?: string
+          lead_city?: string | null
           lead_email?: string | null
+          lead_kind?: string | null
           lead_name?: string
           lead_number?: string | null
+          lead_province?: string | null
+          lead_region?: string | null
+          lead_subtype?: string | null
+          phase?: string | null
+          project_id?: string | null
+          role_title?: string | null
+          street?: string | null
           upload_id?: string
+          value_eur?: string | null
+          website?: string | null
         }
         Relationships: [
           {
