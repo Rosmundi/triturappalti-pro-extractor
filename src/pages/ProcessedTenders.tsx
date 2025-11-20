@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronDown, ChevronUp, Send, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -37,6 +38,7 @@ export default function ProcessedTenders() {
   const [expandedUploadId, setExpandedUploadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sendingToCRM, setSendingToCRM] = useState<string | null>(null);
+  const [selectedLeads, setSelectedLeads] = useState<Record<string, Set<string>>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -85,7 +87,46 @@ export default function ProcessedTenders() {
     setExpandedUploadId(expandedUploadId === uploadId ? null : uploadId);
   };
 
+  const toggleLeadSelection = (uploadId: string, leadId: string) => {
+    setSelectedLeads(prev => {
+      const uploadSelections = new Set(prev[uploadId] || []);
+      if (uploadSelections.has(leadId)) {
+        uploadSelections.delete(leadId);
+      } else {
+        uploadSelections.add(leadId);
+      }
+      return { ...prev, [uploadId]: uploadSelections };
+    });
+  };
+
+  const toggleSelectAll = (uploadId: string, leads: Lead[]) => {
+    setSelectedLeads(prev => {
+      const uploadSelections = prev[uploadId] || new Set();
+      if (uploadSelections.size === leads.length) {
+        return { ...prev, [uploadId]: new Set() };
+      } else {
+        return { ...prev, [uploadId]: new Set(leads.map(l => l.id)) };
+      }
+    });
+  };
+
+  const getSelectedLeadsForUpload = (uploadId: string, allLeads: Lead[]) => {
+    const selectedIds = selectedLeads[uploadId] || new Set();
+    return allLeads.filter(lead => selectedIds.has(lead.id));
+  };
+
   const sendToCRM = async (upload: Upload) => {
+    const leadsToSend = getSelectedLeadsForUpload(upload.id, upload.leads);
+    
+    if (leadsToSend.length === 0) {
+      toast({
+        title: "Nessun lead selezionato",
+        description: "Seleziona almeno un lead da inviare al CRM",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSendingToCRM(upload.id);
     try {
       const response = await fetch(WEBHOOKS.CONFERMA_INVIO_CRM, {
@@ -95,7 +136,7 @@ export default function ProcessedTenders() {
         },
         body: JSON.stringify({ 
           upload_id: upload.id,
-          leads: upload.leads 
+          leads: leadsToSend 
         }),
       });
 
@@ -105,8 +146,11 @@ export default function ProcessedTenders() {
 
       toast({
         title: "Lead inviati al CRM",
-        description: `${upload.leads.length} lead sono stati inviati con successo`,
+        description: `${leadsToSend.length} lead sono stati inviati con successo`,
       });
+      
+      // Clear selection after successful send
+      setSelectedLeads(prev => ({ ...prev, [upload.id]: new Set() }));
     } catch (error) {
       console.error('Errore invio CRM:', error);
       toast({
@@ -175,10 +219,18 @@ export default function ProcessedTenders() {
                         <p className="text-muted-foreground text-center py-4">Nessun lead trovato</p>
                       ) : (
                         <>
-                          <div className="overflow-x-auto mb-4">
+                          <div className="overflow-x-auto mb-6">
                             <Table>
                               <TableHeader>
                                 <TableRow>
+                                  <TableHead className="w-12">
+                                    <input
+                                      type="checkbox"
+                                      checked={(selectedLeads[upload.id]?.size || 0) === upload.leads.length && upload.leads.length > 0}
+                                      onChange={() => toggleSelectAll(upload.id, upload.leads)}
+                                      className="cursor-pointer"
+                                    />
+                                  </TableHead>
                                   <TableHead>CIG</TableHead>
                                   <TableHead>Descrizione</TableHead>
                                   <TableHead>Nome Lead</TableHead>
@@ -189,6 +241,14 @@ export default function ProcessedTenders() {
                               <TableBody>
                                 {upload.leads.map((lead) => (
                                   <TableRow key={lead.id}>
+                                    <TableCell>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedLeads[upload.id]?.has(lead.id) || false}
+                                        onChange={() => toggleLeadSelection(upload.id, lead.id)}
+                                        className="cursor-pointer"
+                                      />
+                                    </TableCell>
                                     <TableCell className="font-medium">{lead.cig_appalto || '-'}</TableCell>
                                     <TableCell>{lead.descrizione_appalto || '-'}</TableCell>
                                     <TableCell className="font-medium">{lead.lead_name}</TableCell>
@@ -200,11 +260,12 @@ export default function ProcessedTenders() {
                             </Table>
                           </div>
                           
-                          <div className="flex justify-end">
+                          <div className="flex justify-center">
                             <Button
                               onClick={() => sendToCRM(upload)}
                               disabled={sendingToCRM === upload.id}
                               className="gap-2"
+                              size="lg"
                             >
                               {sendingToCRM === upload.id ? (
                                 <>
@@ -214,7 +275,7 @@ export default function ProcessedTenders() {
                               ) : (
                                 <>
                                   <Send className="h-4 w-4" />
-                                  Invia lead al CRM
+                                  Invia {selectedLeads[upload.id]?.size || 0} lead al CRM
                                 </>
                               )}
                             </Button>
