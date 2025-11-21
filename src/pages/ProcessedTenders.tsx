@@ -18,27 +18,21 @@ import { WEBHOOKS } from "@/config/webhooks";
 
 interface Lead {
   id: string;
-  lead_name: string;
+  lead_company: string;
+  lead_surname: string | null;
   lead_email: string | null;
   lead_number: string | null;
-  cig_appalto: string | null;
-  descrizione_appalto: string | null;
   project_id: string | null;
-  value_eur: string | null;
-  phase: string | null;
-  cup: string | null;
   entity_role: string | null;
   lead_category: string | null;
   quality_status: string | null;
-  full_name: string | null;
-  role_title: string | null;
   website: string | null;
   street: string | null;
   cap: string | null;
   lead_city: string | null;
   lead_province: string | null;
-  lead_region: string | null;
   country: string | null;
+  appalto_location: string | null;
 }
 
 interface Upload {
@@ -46,6 +40,12 @@ interface Upload {
   filename: string;
   uploaded_at: string;
   status: string;
+  cig_appalto: string | null;
+  descrizione_appalto: string | null;
+  value_eur: string | null;
+  phase: string | null;
+  cup: string | null;
+  appalto_location: string | null;
   leads: Lead[];
 }
 
@@ -180,6 +180,17 @@ export default function ProcessedTenders() {
 
     setSendingToCRM(upload.id);
     try {
+      // Send leads with tender information included
+      const leadsWithTenderInfo = leadsToSend.map(lead => ({
+        ...lead,
+        cig_appalto: upload.cig_appalto,
+        descrizione_appalto: upload.descrizione_appalto,
+        value_eur: upload.value_eur,
+        phase: upload.phase,
+        cup: upload.cup,
+        appalto_location: upload.appalto_location,
+      }));
+
       const response = await fetch(WEBHOOKS.CONFERMA_INVIO_CRM, {
         method: 'POST',
         headers: {
@@ -187,7 +198,7 @@ export default function ProcessedTenders() {
         },
         body: JSON.stringify({ 
           upload_id: upload.id,
-          leads: leadsToSend 
+          leads: leadsWithTenderInfo 
         }),
       });
 
@@ -252,6 +263,11 @@ export default function ProcessedTenders() {
                         <CardTitle className="text-xl mb-2">{upload.filename}</CardTitle>
                         <div className="text-sm text-muted-foreground space-y-1">
                           <p><strong>Caricato:</strong> {new Date(upload.uploaded_at).toLocaleString('it-IT')}</p>
+                          <p><strong>CIG:</strong> {upload.cig_appalto || '-'}</p>
+                          <p><strong>Descrizione:</strong> {upload.descrizione_appalto || '-'}</p>
+                          <p><strong>Valore:</strong> {upload.value_eur ? `€${parseInt(upload.value_eur).toLocaleString()}` : '-'}</p>
+                          <p><strong>Fase:</strong> {upload.phase || '-'}</p>
+                          <p><strong>Località:</strong> {upload.appalto_location || '-'}</p>
                           <p><strong>Lead trovati:</strong> {upload.leads.length}</p>
                         </div>
                       </div>
@@ -286,7 +302,7 @@ export default function ProcessedTenders() {
                         <>
                           <div className="overflow-x-auto mb-6">
                             <Table>
-                              <TableHeader>
+                               <TableHeader>
                                 <TableRow>
                                    <TableHead className="w-12">
                                      <input
@@ -296,61 +312,55 @@ export default function ProcessedTenders() {
                                        className="cursor-pointer"
                                      />
                                    </TableHead>
-                                   <TableHead>CIG</TableHead>
-                                   <TableHead>Descrizione</TableHead>
-                                   <TableHead>Azienda/Nome</TableHead>
+                                   <TableHead>Azienda</TableHead>
+                                   <TableHead>Referente</TableHead>
                                    <TableHead>Email</TableHead>
                                    <TableHead>Telefono</TableHead>
                                    <TableHead>Categoria</TableHead>
                                    <TableHead>Ruolo</TableHead>
-                                   <TableHead>Valore €</TableHead>
-                                   <TableHead>Fase</TableHead>
                                    <TableHead>Città</TableHead>
-                                   <TableHead>Regione</TableHead>
+                                   <TableHead>Provincia</TableHead>
                                    <TableHead>Website</TableHead>
                                    <TableHead>Qualità</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {upload.leads.map((lead) => (
-                                  <TableRow key={lead.id}>
-                                     <TableCell>
-                                       <input
-                                         type="checkbox"
-                                         checked={selectedLeads[upload.id]?.has(lead.id) || false}
-                                         onChange={() => toggleLeadSelection(upload.id, lead.id)}
-                                         className="cursor-pointer"
-                                       />
-                                     </TableCell>
-                                     <TableCell className="font-medium">{lead.cig_appalto || '-'}</TableCell>
-                                     <TableCell className="max-w-xs truncate">{lead.descrizione_appalto || '-'}</TableCell>
-                                     <TableCell className="font-medium">{lead.lead_name}</TableCell>
-                                     <TableCell>{lead.lead_email || '-'}</TableCell>
-                                     <TableCell>{lead.lead_number || '-'}</TableCell>
-                                     <TableCell>
-                                       <span className="text-xs bg-secondary px-2 py-1 rounded">
-                                         {lead.lead_category || '-'}
-                                       </span>
-                                     </TableCell>
-                                     <TableCell className="text-xs">{lead.entity_role || '-'}</TableCell>
-                                     <TableCell>{lead.value_eur ? `€${parseInt(lead.value_eur).toLocaleString()}` : '-'}</TableCell>
-                                     <TableCell>{lead.phase || '-'}</TableCell>
-                                     <TableCell>{lead.lead_city || '-'}</TableCell>
-                                     <TableCell>{lead.lead_region || '-'}</TableCell>
-                                     <TableCell>
-                                       {lead.website ? (
-                                         <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                                           Link
-                                         </a>
-                                       ) : '-'}
-                                     </TableCell>
-                                     <TableCell>
-                                       <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                         {lead.quality_status || '-'}
-                                       </span>
-                                     </TableCell>
-                                  </TableRow>
-                                ))}
+                                 {upload.leads.map((lead) => (
+                                   <TableRow key={lead.id}>
+                                      <TableCell>
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedLeads[upload.id]?.has(lead.id) || false}
+                                          onChange={() => toggleLeadSelection(upload.id, lead.id)}
+                                          className="cursor-pointer"
+                                        />
+                                      </TableCell>
+                                      <TableCell className="font-medium">{lead.lead_company}</TableCell>
+                                      <TableCell>{lead.lead_surname || '-'}</TableCell>
+                                      <TableCell>{lead.lead_email || '-'}</TableCell>
+                                      <TableCell>{lead.lead_number || '-'}</TableCell>
+                                      <TableCell>
+                                        <span className="text-xs bg-secondary px-2 py-1 rounded">
+                                          {lead.lead_category || '-'}
+                                        </span>
+                                      </TableCell>
+                                      <TableCell className="text-xs">{lead.entity_role || '-'}</TableCell>
+                                      <TableCell>{lead.lead_city || '-'}</TableCell>
+                                      <TableCell>{lead.lead_province || '-'}</TableCell>
+                                      <TableCell>
+                                        {lead.website ? (
+                                          <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                            Link
+                                          </a>
+                                        ) : '-'}
+                                      </TableCell>
+                                      <TableCell>
+                                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                          {lead.quality_status || '-'}
+                                        </span>
+                                      </TableCell>
+                                   </TableRow>
+                                 ))}
                               </TableBody>
                             </Table>
                           </div>
