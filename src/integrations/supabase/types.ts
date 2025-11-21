@@ -18,8 +18,11 @@ export type Database = {
         Row: {
           appalto_location: string | null
           cap: string | null
+          cig_appalto: string | null
           country: string | null
           created_at: string
+          cup: string | null
+          descrizione_appalto: string | null
           entity_role: string | null
           id: string
           lead_category: string | null
@@ -29,17 +32,22 @@ export type Database = {
           lead_number: string | null
           lead_province: string | null
           lead_surname: string | null
+          phase: string | null
           project_id: string | null
           quality_status: string | null
           street: string | null
           upload_id: string
+          value_eur: string | null
           website: string | null
         }
         Insert: {
           appalto_location?: string | null
           cap?: string | null
+          cig_appalto?: string | null
           country?: string | null
           created_at?: string
+          cup?: string | null
+          descrizione_appalto?: string | null
           entity_role?: string | null
           id?: string
           lead_category?: string | null
@@ -49,17 +57,22 @@ export type Database = {
           lead_number?: string | null
           lead_province?: string | null
           lead_surname?: string | null
+          phase?: string | null
           project_id?: string | null
           quality_status?: string | null
           street?: string | null
           upload_id: string
+          value_eur?: string | null
           website?: string | null
         }
         Update: {
           appalto_location?: string | null
           cap?: string | null
+          cig_appalto?: string | null
           country?: string | null
           created_at?: string
+          cup?: string | null
+          descrizione_appalto?: string | null
           entity_role?: string | null
           id?: string
           lead_category?: string | null
@@ -69,10 +82,12 @@ export type Database = {
           lead_number?: string | null
           lead_province?: string | null
           lead_surname?: string | null
+          phase?: string | null
           project_id?: string | null
           quality_status?: string | null
           street?: string | null
           upload_id?: string
+          value_eur?: string | null
           website?: string | null
         }
         Relationships: [

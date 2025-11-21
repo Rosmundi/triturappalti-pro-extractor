@@ -224,7 +224,7 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
 
       if (uploadError) throw uploadError;
 
-      // Insert all leads with the NEW field structure
+      // Insert all leads with the NEW field structure including tender info
       const leadsToInsert = leadsArray.map(lead => ({
         upload_id: uploadData.id,
         lead_company: lead.lead_company || 'N/A',
@@ -242,6 +242,12 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
         lead_province: lead.lead_province || null,
         country: lead.country || null,
         appalto_location: lead.appalto_location || null,
+        // Tender-specific fields from each lead
+        cig_appalto: lead.cig_appalto || null,
+        descrizione_appalto: lead.descrizione_appalto || null,
+        value_eur: lead.value_eur || null,
+        phase: lead.phase || null,
+        cup: lead.cup || null,
       }));
 
       const { error: leadError } = await supabase
