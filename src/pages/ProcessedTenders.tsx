@@ -4,8 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronDown, ChevronUp, Send, Loader2, Trash2 } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronDown, ChevronRight, Send, Loader2, Trash2, FileText, Briefcase, Users } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -35,11 +34,8 @@ interface Lead {
   appalto_location: string | null;
 }
 
-interface Upload {
-  id: string;
-  filename: string;
-  uploaded_at: string;
-  status: string;
+interface Tender {
+  project_id: string;
   cig_appalto: string | null;
   descrizione_appalto: string | null;
   value_eur: string | null;
@@ -49,9 +45,19 @@ interface Upload {
   leads: Lead[];
 }
 
+interface Upload {
+  id: string;
+  filename: string;
+  uploaded_at: string;
+  status: string;
+  leads: Lead[];
+  tenders: Tender[];
+}
+
 export default function ProcessedTenders() {
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [expandedUploadId, setExpandedUploadId] = useState<string | null>(null);
+  const [expandedTenders, setExpandedTenders] = useState<Record<string, Set<string>>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [sendingToCRM, setSendingToCRM] = useState<string | null>(null);
   const [selectedLeads, setSelectedLeads] = useState<Record<string, Set<string>>>({});
@@ -71,22 +77,45 @@ export default function ProcessedTenders() {
 
       if (uploadsError) throw uploadsError;
 
-      // Fetch leads for each upload
-      const uploadsWithLeads = await Promise.all(
+      // Fetch leads for each upload and group by tender
+      const uploadsWithTenders = await Promise.all(
         (uploadsData || []).map(async (upload) => {
           const { data: leadsData } = await supabase
             .from('leads')
             .select('*')
             .eq('upload_id', upload.id);
 
+          // Group leads by project_id (tender)
+          const tenderMap = new Map<string, Tender>();
+          
+          (leadsData || []).forEach((lead) => {
+            const projectId = lead.project_id || 'unknown';
+            
+            if (!tenderMap.has(projectId)) {
+              tenderMap.set(projectId, {
+                project_id: projectId,
+                cig_appalto: lead.appalto_location ? upload.cig_appalto : null,
+                descrizione_appalto: upload.descrizione_appalto,
+                value_eur: upload.value_eur,
+                phase: upload.phase,
+                cup: upload.cup,
+                appalto_location: lead.appalto_location,
+                leads: []
+              });
+            }
+            
+            tenderMap.get(projectId)!.leads.push(lead);
+          });
+
           return {
             ...upload,
-            leads: leadsData || []
+            leads: leadsData || [],
+            tenders: Array.from(tenderMap.values())
           };
         })
       );
 
-      setUploads(uploadsWithLeads);
+      setUploads(uploadsWithTenders);
     } catch (error) {
       console.error('Errore caricamento appalti:', error);
       toast({
@@ -103,6 +132,18 @@ export default function ProcessedTenders() {
     setExpandedUploadId(expandedUploadId === uploadId ? null : uploadId);
   };
 
+  const toggleTender = (uploadId: string, tenderId: string) => {
+    setExpandedTenders(prev => {
+      const uploadTenders = new Set(prev[uploadId] || []);
+      if (uploadTenders.has(tenderId)) {
+        uploadTenders.delete(tenderId);
+      } else {
+        uploadTenders.add(tenderId);
+      }
+      return { ...prev, [uploadId]: uploadTenders };
+    });
+  };
+
   const toggleLeadSelection = (uploadId: string, leadId: string) => {
     setSelectedLeads(prev => {
       const uploadSelections = new Set(prev[uploadId] || []);
@@ -115,14 +156,21 @@ export default function ProcessedTenders() {
     });
   };
 
-  const toggleSelectAll = (uploadId: string, leads: Lead[]) => {
+  const toggleSelectAllTender = (uploadId: string, tender: Tender) => {
     setSelectedLeads(prev => {
-      const uploadSelections = prev[uploadId] || new Set();
-      if (uploadSelections.size === leads.length) {
-        return { ...prev, [uploadId]: new Set() };
-      } else {
-        return { ...prev, [uploadId]: new Set(leads.map(l => l.id)) };
-      }
+      const uploadSelections = new Set(prev[uploadId] || []);
+      const tenderLeadIds = tender.leads.map(l => l.id);
+      const allSelected = tenderLeadIds.every(id => uploadSelections.has(id));
+      
+      tenderLeadIds.forEach(id => {
+        if (allSelected) {
+          uploadSelections.delete(id);
+        } else {
+          uploadSelections.add(id);
+        }
+      });
+      
+      return { ...prev, [uploadId]: uploadSelections };
     });
   };
 
@@ -180,16 +228,32 @@ export default function ProcessedTenders() {
 
     setSendingToCRM(upload.id);
     try {
-      // Send leads with tender information included
-      const leadsWithTenderInfo = leadsToSend.map(lead => ({
-        ...lead,
-        cig_appalto: upload.cig_appalto,
-        descrizione_appalto: upload.descrizione_appalto,
-        value_eur: upload.value_eur,
-        phase: upload.phase,
-        cup: upload.cup,
-        appalto_location: upload.appalto_location,
-      }));
+      // Send leads with complete hierarchy: upload info + tender info + lead info
+      const leadsWithCompleteInfo = leadsToSend.map(lead => {
+        // Find the tender this lead belongs to
+        const tender = upload.tenders.find(t => 
+          t.leads.some(l => l.id === lead.id)
+        );
+
+        return {
+          // Upload info (Level 1)
+          upload_id: upload.id,
+          filename: upload.filename,
+          uploaded_at: upload.uploaded_at,
+          
+          // Tender info (Level 2)
+          project_id: lead.project_id,
+          cig_appalto: tender?.cig_appalto,
+          descrizione_appalto: tender?.descrizione_appalto,
+          value_eur: tender?.value_eur,
+          phase: tender?.phase,
+          cup: tender?.cup,
+          appalto_location: lead.appalto_location,
+          
+          // Lead info (Level 3)
+          ...lead
+        };
+      });
 
       const response = await fetch(WEBHOOKS.CONFERMA_INVIO_CRM, {
         method: 'POST',
@@ -197,8 +261,7 @@ export default function ProcessedTenders() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          upload_id: upload.id,
-          leads: leadsWithTenderInfo 
+          leads: leadsWithCompleteInfo 
         }),
       });
 
@@ -253,144 +316,201 @@ export default function ProcessedTenders() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {uploads.map((upload) => (
-                <Card key={upload.id}>
-                  <CardHeader 
-                    className="cursor-pointer hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1" onClick={() => toggleExpand(upload.id)}>
-                        <CardTitle className="text-xl mb-2">{upload.filename}</CardTitle>
-                        <div className="text-sm text-muted-foreground space-y-1">
-                          <p><strong>Caricato:</strong> {new Date(upload.uploaded_at).toLocaleString('it-IT')}</p>
-                          <p><strong>CIG:</strong> {upload.cig_appalto || '-'}</p>
-                          <p><strong>Descrizione:</strong> {upload.descrizione_appalto || '-'}</p>
-                          <p><strong>Valore:</strong> {upload.value_eur ? `€${parseInt(upload.value_eur).toLocaleString()}` : '-'}</p>
-                          <p><strong>Fase:</strong> {upload.phase || '-'}</p>
-                          <p><strong>Località:</strong> {upload.appalto_location || '-'}</p>
-                          <p><strong>Lead trovati:</strong> {upload.leads.length}</p>
+              {uploads.map((upload) => {
+                const totalTenders = upload.tenders.length;
+                const totalLeads = upload.leads.length;
+                
+                return (
+                  <Card key={upload.id}>
+                    {/* Level 1: Upload */}
+                    <CardHeader 
+                      className="cursor-pointer hover:bg-accent/50 transition-colors"
+                      onClick={() => toggleExpand(upload.id)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-3 flex-1">
+                          <FileText className="h-5 w-5 text-primary" />
+                          <div>
+                            <CardTitle className="text-xl mb-2">{upload.filename}</CardTitle>
+                            <div className="text-sm text-muted-foreground space-x-4">
+                              <span><strong>Data:</strong> {new Date(upload.uploaded_at).toLocaleDateString('it-IT')}</span>
+                              <span><strong>Appalti:</strong> {totalTenders}</span>
+                              <span><strong>Lead:</strong> {totalLeads}</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteUpload(upload.id);
-                          }}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                        <div onClick={() => toggleExpand(upload.id)}>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteUpload(upload.id);
+                            }}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                           {expandedUploadId === upload.id ? (
-                            <ChevronUp className="h-5 w-5" />
-                          ) : (
                             <ChevronDown className="h-5 w-5" />
+                          ) : (
+                            <ChevronRight className="h-5 w-5" />
                           )}
                         </div>
                       </div>
-                    </div>
-                  </CardHeader>
-                  
-                  {expandedUploadId === upload.id && (
-                    <CardContent>
-                      {upload.leads.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-4">Nessun lead trovato</p>
-                      ) : (
-                        <>
-                          <div className="overflow-x-auto mb-6">
-                            <Table>
-                               <TableHeader>
-                                <TableRow>
-                                   <TableHead className="w-12">
-                                     <input
-                                       type="checkbox"
-                                       checked={(selectedLeads[upload.id]?.size || 0) === upload.leads.length && upload.leads.length > 0}
-                                       onChange={() => toggleSelectAll(upload.id, upload.leads)}
-                                       className="cursor-pointer"
-                                     />
-                                   </TableHead>
-                                   <TableHead>Azienda</TableHead>
-                                   <TableHead>Referente</TableHead>
-                                   <TableHead>Email</TableHead>
-                                   <TableHead>Telefono</TableHead>
-                                   <TableHead>Categoria</TableHead>
-                                   <TableHead>Ruolo</TableHead>
-                                   <TableHead>Città</TableHead>
-                                   <TableHead>Provincia</TableHead>
-                                   <TableHead>Website</TableHead>
-                                   <TableHead>Qualità</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                 {upload.leads.map((lead) => (
-                                   <TableRow key={lead.id}>
-                                      <TableCell>
+                    </CardHeader>
+                    
+                    {/* Level 2: Tenders */}
+                    {expandedUploadId === upload.id && (
+                      <CardContent className="space-y-3">
+                        {upload.tenders.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-4">Nessun appalto trovato</p>
+                        ) : (
+                          <>
+                            {upload.tenders.map((tender) => {
+                              const isTenderExpanded = expandedTenders[upload.id]?.has(tender.project_id);
+                              const tenderLeadIds = tender.leads.map(l => l.id);
+                              const selectedCount = tenderLeadIds.filter(id => 
+                                selectedLeads[upload.id]?.has(id)
+                              ).length;
+                              const allTenderSelected = selectedCount === tender.leads.length && tender.leads.length > 0;
+                              
+                              return (
+                                <Card key={tender.project_id} className="bg-muted/30">
+                                  <CardHeader 
+                                    className="cursor-pointer hover:bg-accent/30 transition-colors py-3"
+                                    onClick={() => toggleTender(upload.id, tender.project_id)}
+                                  >
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex items-center gap-3 flex-1">
+                                        <Briefcase className="h-4 w-4 text-primary" />
+                                        <div className="space-y-1">
+                                          <div className="font-semibold">{tender.descrizione_appalto || 'Appalto senza descrizione'}</div>
+                                          <div className="text-xs text-muted-foreground space-x-3">
+                                            {tender.cig_appalto && <span><strong>CIG:</strong> {tender.cig_appalto}</span>}
+                                            {tender.value_eur && <span><strong>Valore:</strong> €{parseInt(tender.value_eur).toLocaleString()}</span>}
+                                            {tender.phase && <span><strong>Fase:</strong> {tender.phase}</span>}
+                                            {tender.appalto_location && <span><strong>Località:</strong> {tender.appalto_location}</span>}
+                                            <span><strong>Lead:</strong> {tender.leads.length}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
                                         <input
                                           type="checkbox"
-                                          checked={selectedLeads[upload.id]?.has(lead.id) || false}
-                                          onChange={() => toggleLeadSelection(upload.id, lead.id)}
+                                          checked={allTenderSelected}
+                                          onChange={(e) => {
+                                            e.stopPropagation();
+                                            toggleSelectAllTender(upload.id, tender);
+                                          }}
+                                          onClick={(e) => e.stopPropagation()}
                                           className="cursor-pointer"
+                                          title="Seleziona tutti i lead di questo appalto"
                                         />
-                                      </TableCell>
-                                      <TableCell className="font-medium">{lead.lead_company}</TableCell>
-                                      <TableCell>{lead.lead_surname || '-'}</TableCell>
-                                      <TableCell>{lead.lead_email || '-'}</TableCell>
-                                      <TableCell>{lead.lead_number || '-'}</TableCell>
-                                      <TableCell>
-                                        <span className="text-xs bg-secondary px-2 py-1 rounded">
-                                          {lead.lead_category || '-'}
-                                        </span>
-                                      </TableCell>
-                                      <TableCell className="text-xs">{lead.entity_role || '-'}</TableCell>
-                                      <TableCell>{lead.lead_city || '-'}</TableCell>
-                                      <TableCell>{lead.lead_province || '-'}</TableCell>
-                                      <TableCell>
-                                        {lead.website ? (
-                                          <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                                            Link
-                                          </a>
-                                        ) : '-'}
-                                      </TableCell>
-                                      <TableCell>
-                                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                          {lead.quality_status || '-'}
-                                        </span>
-                                      </TableCell>
-                                   </TableRow>
-                                 ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                          
-                          <div className="flex justify-center">
-                            <Button
-                              onClick={() => sendToCRM(upload)}
-                              disabled={sendingToCRM === upload.id}
-                              className="gap-2"
-                              size="lg"
-                            >
-                              {sendingToCRM === upload.id ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                  Invio in corso...
-                                </>
-                              ) : (
-                                <>
-                                  <Send className="h-4 w-4" />
-                                  Invia {selectedLeads[upload.id]?.size || 0} lead al CRM
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                    </CardContent>
-                  )}
-                </Card>
-              ))}
+                                        {isTenderExpanded ? (
+                                          <ChevronDown className="h-4 w-4" />
+                                        ) : (
+                                          <ChevronRight className="h-4 w-4" />
+                                        )}
+                                      </div>
+                                    </div>
+                                  </CardHeader>
+
+                                  {/* Level 3: Leads */}
+                                  {isTenderExpanded && (
+                                    <CardContent className="pt-4">
+                                      <div className="overflow-x-auto">
+                                        <Table>
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead className="w-12">
+                                                <Users className="h-4 w-4" />
+                                              </TableHead>
+                                              <TableHead>Azienda</TableHead>
+                                              <TableHead>Referente</TableHead>
+                                              <TableHead>Email</TableHead>
+                                              <TableHead>Telefono</TableHead>
+                                              <TableHead>Categoria</TableHead>
+                                              <TableHead>Ruolo</TableHead>
+                                              <TableHead>Città</TableHead>
+                                              <TableHead>Provincia</TableHead>
+                                              <TableHead>Website</TableHead>
+                                              <TableHead>Qualità</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {tender.leads.map((lead) => (
+                                              <TableRow key={lead.id}>
+                                                <TableCell>
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={selectedLeads[upload.id]?.has(lead.id) || false}
+                                                    onChange={() => toggleLeadSelection(upload.id, lead.id)}
+                                                    className="cursor-pointer"
+                                                  />
+                                                </TableCell>
+                                                <TableCell className="font-medium">{lead.lead_company}</TableCell>
+                                                <TableCell>{lead.lead_surname || '-'}</TableCell>
+                                                <TableCell>{lead.lead_email || '-'}</TableCell>
+                                                <TableCell>{lead.lead_number || '-'}</TableCell>
+                                                <TableCell>
+                                                  <span className="text-xs bg-secondary px-2 py-1 rounded">
+                                                    {lead.lead_category || '-'}
+                                                  </span>
+                                                </TableCell>
+                                                <TableCell className="text-xs">{lead.entity_role || '-'}</TableCell>
+                                                <TableCell>{lead.lead_city || '-'}</TableCell>
+                                                <TableCell>{lead.lead_province || '-'}</TableCell>
+                                                <TableCell>
+                                                  {lead.website ? (
+                                                    <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs">
+                                                      Link
+                                                    </a>
+                                                  ) : '-'}
+                                                </TableCell>
+                                                <TableCell>
+                                                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                                    {lead.quality_status || '-'}
+                                                  </span>
+                                                </TableCell>
+                                              </TableRow>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      </div>
+                                    </CardContent>
+                                  )}
+                                </Card>
+                              );
+                            })}
+                            
+                            <div className="flex justify-center pt-4">
+                              <Button
+                                onClick={() => sendToCRM(upload)}
+                                disabled={sendingToCRM === upload.id}
+                                className="gap-2"
+                                size="lg"
+                              >
+                                {sendingToCRM === upload.id ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Invio in corso...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Send className="h-4 w-4" />
+                                    Invia {selectedLeads[upload.id]?.size || 0} lead al CRM
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
