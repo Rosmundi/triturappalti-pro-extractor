@@ -203,42 +203,45 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
 
   const saveToDatabase = async (filename: string, leadsArray: any[]) => {
     try {
-      // First create the upload record
+      // Extract tender info from the first lead (same for all leads in the array)
+      const firstLead = leadsArray[0];
+      
+      // First create the upload record with tender information
       const { data: uploadData, error: uploadError } = await supabase
         .from('uploads')
         .insert({
           filename,
           status: 'completed',
+          cig_appalto: firstLead?.cig_appalto || null,
+          descrizione_appalto: firstLead?.descrizione_appalto || null,
+          value_eur: firstLead?.value_eur || null,
+          phase: firstLead?.phase || null,
+          cup: firstLead?.cup || null,
+          appalto_location: firstLead?.appalto_location || null,
         })
         .select()
         .single();
 
       if (uploadError) throw uploadError;
 
-      // Insert all leads with ALL fields from n8n
+      // Insert all leads with the NEW field structure
       const leadsToInsert = leadsArray.map(lead => ({
         upload_id: uploadData.id,
-        lead_name: lead.lead_name || 'N/A',
+        lead_company: lead.lead_company || 'N/A',
+        lead_surname: lead.lead_surname || null,
         lead_email: lead.lead_email || null,
         lead_number: lead.lead_number || null,
-        cig_appalto: lead.cig_appalto || null,
-        descrizione_appalto: lead.descrizione_appalto || null,
         project_id: lead.project_id || null,
-        value_eur: lead.value_eur || null,
-        phase: lead.phase || null,
-        cup: lead.cup || null,
         entity_role: lead.entity_role || null,
         lead_category: lead.lead_category || null,
         quality_status: lead.quality_status || null,
-        full_name: lead.full_name || null,
-        role_title: lead.role_title || null,
         website: lead.website || null,
         street: lead.street || null,
         cap: lead.cap || null,
         lead_city: lead.lead_city || null,
         lead_province: lead.lead_province || null,
-        lead_region: lead.lead_region || null,
         country: lead.country || null,
+        appalto_location: lead.appalto_location || null,
       }));
 
       const { error: leadError } = await supabase

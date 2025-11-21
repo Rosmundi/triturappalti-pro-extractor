@@ -16,81 +16,63 @@ export type Database = {
     Tables: {
       leads: {
         Row: {
+          appalto_location: string | null
           cap: string | null
-          cig_appalto: string | null
           country: string | null
           created_at: string
-          cup: string | null
-          descrizione_appalto: string | null
           entity_role: string | null
-          full_name: string | null
           id: string
           lead_category: string | null
           lead_city: string | null
+          lead_company: string | null
           lead_email: string | null
-          lead_name: string
           lead_number: string | null
           lead_province: string | null
-          lead_region: string | null
-          phase: string | null
+          lead_surname: string | null
           project_id: string | null
           quality_status: string | null
-          role_title: string | null
           street: string | null
           upload_id: string
-          value_eur: string | null
           website: string | null
         }
         Insert: {
+          appalto_location?: string | null
           cap?: string | null
-          cig_appalto?: string | null
           country?: string | null
           created_at?: string
-          cup?: string | null
-          descrizione_appalto?: string | null
           entity_role?: string | null
-          full_name?: string | null
           id?: string
           lead_category?: string | null
           lead_city?: string | null
+          lead_company?: string | null
           lead_email?: string | null
-          lead_name: string
           lead_number?: string | null
           lead_province?: string | null
-          lead_region?: string | null
-          phase?: string | null
+          lead_surname?: string | null
           project_id?: string | null
           quality_status?: string | null
-          role_title?: string | null
           street?: string | null
           upload_id: string
-          value_eur?: string | null
           website?: string | null
         }
         Update: {
+          appalto_location?: string | null
           cap?: string | null
-          cig_appalto?: string | null
           country?: string | null
           created_at?: string
-          cup?: string | null
-          descrizione_appalto?: string | null
           entity_role?: string | null
-          full_name?: string | null
           id?: string
           lead_category?: string | null
           lead_city?: string | null
+          lead_company?: string | null
           lead_email?: string | null
-          lead_name?: string
           lead_number?: string | null
           lead_province?: string | null
-          lead_region?: string | null
-          phase?: string | null
+          lead_surname?: string | null
           project_id?: string | null
           quality_status?: string | null
-          role_title?: string | null
           street?: string | null
           upload_id?: string
-          value_eur?: string | null
           website?: string | null
         }
         Relationships: [
@@ -105,28 +87,40 @@ export type Database = {
       }
       uploads: {
         Row: {
+          appalto_location: string | null
           cig_appalto: string | null
+          cup: string | null
           descrizione_appalto: string | null
           filename: string
           id: string
+          phase: string | null
           status: string
           uploaded_at: string
+          value_eur: string | null
         }
         Insert: {
+          appalto_location?: string | null
           cig_appalto?: string | null
+          cup?: string | null
           descrizione_appalto?: string | null
           filename: string
           id?: string
+          phase?: string | null
           status?: string
           uploaded_at?: string
+          value_eur?: string | null
         }
         Update: {
+          appalto_location?: string | null
           cig_appalto?: string | null
+          cup?: string | null
           descrizione_appalto?: string | null
           filename?: string
           id?: string
+          phase?: string | null
           status?: string
           uploaded_at?: string
+          value_eur?: string | null
         }
         Relationships: []
       }
