@@ -4,7 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronDown, ChevronRight, Send, Loader2, Trash2, FileText, Briefcase, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, Send, Loader2, Trash2, FileText, Briefcase, Users, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -32,6 +43,12 @@ interface Lead {
   lead_province: string | null;
   country: string | null;
   appalto_location: string | null;
+  // Tender-specific fields
+  cig_appalto: string | null;
+  descrizione_appalto: string | null;
+  value_eur: string | null;
+  phase: string | null;
+  cup: string | null;
 }
 
 interface Tender {
@@ -61,6 +78,7 @@ export default function ProcessedTenders() {
   const [isLoading, setIsLoading] = useState(true);
   const [sendingToCRM, setSendingToCRM] = useState<string | null>(null);
   const [selectedLeads, setSelectedLeads] = useState<Record<string, Set<string>>>({});
+  const [selectAllPdf, setSelectAllPdf] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -94,11 +112,11 @@ export default function ProcessedTenders() {
             if (!tenderMap.has(projectId)) {
               tenderMap.set(projectId, {
                 project_id: projectId,
-                cig_appalto: lead.appalto_location ? upload.cig_appalto : null,
-                descrizione_appalto: upload.descrizione_appalto,
-                value_eur: upload.value_eur,
-                phase: upload.phase,
-                cup: upload.cup,
+                cig_appalto: lead.cig_appalto,
+                descrizione_appalto: lead.descrizione_appalto,
+                value_eur: lead.value_eur,
+                phase: lead.phase,
+                cup: lead.cup,
                 appalto_location: lead.appalto_location,
                 leads: []
               });
@@ -172,6 +190,27 @@ export default function ProcessedTenders() {
       
       return { ...prev, [uploadId]: uploadSelections };
     });
+  };
+
+  const toggleSelectAllPdf = (uploadId: string, allLeads: Lead[]) => {
+    const allLeadIds = allLeads.map(l => l.id);
+    const allSelected = allLeadIds.every(id => selectedLeads[uploadId]?.has(id));
+    
+    setSelectedLeads(prev => {
+      const uploadSelections = new Set(prev[uploadId] || []);
+      
+      allLeadIds.forEach(id => {
+        if (allSelected) {
+          uploadSelections.delete(id);
+        } else {
+          uploadSelections.add(id);
+        }
+      });
+      
+      return { ...prev, [uploadId]: uploadSelections };
+    });
+    
+    setSelectAllPdf(prev => ({ ...prev, [uploadId]: !allSelected }));
   };
 
   const deleteUpload = async (uploadId: string) => {
@@ -340,17 +379,50 @@ export default function ProcessedTenders() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
+                          <input
+                            type="checkbox"
+                            checked={upload.leads.every(l => selectedLeads[upload.id]?.has(l.id))}
+                            onChange={(e) => {
                               e.stopPropagation();
-                              deleteUpload(upload.id);
+                              toggleSelectAllPdf(upload.id, upload.leads);
                             }}
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                            onClick={(e) => e.stopPropagation()}
+                            className="cursor-pointer"
+                            title="Seleziona tutti i lead di questo PDF"
+                          />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="flex items-center gap-2">
+                                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                                  Conferma eliminazione
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Sei sicuro di voler eliminare "{upload.filename}" e tutti i {totalLeads} lead associati? 
+                                  Questa azione non può essere annullata.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteUpload(upload.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Elimina
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                           {expandedUploadId === upload.id ? (
                             <ChevronDown className="h-5 w-5" />
                           ) : (
