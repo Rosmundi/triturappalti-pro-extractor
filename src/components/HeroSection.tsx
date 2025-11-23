@@ -45,22 +45,22 @@ export const HeroSection = () => {
                 <div className="flex justify-center mb-2">
                   <FileText className="h-8 w-8 text-primary" />
                 </div>
-                <div className="text-2xl font-bold text-primary">PDF</div>
-                <div className="text-sm text-muted-foreground">Multipli</div>
+                <div className="text-2xl font-bold text-primary">Carica PDF</div>
+                <div className="text-sm text-muted-foreground">di appalti multipagina</div>
               </div>
               <div className="text-center">
                 <div className="flex justify-center mb-2">
                   <Users className="h-8 w-8 text-accent" />
                 </div>
-                <div className="text-2xl font-bold text-accent">Lead</div>
-                <div className="text-sm text-muted-foreground">Estratti</div>
+                <div className="text-2xl font-bold text-accent">Lead estratti</div>
+                <div className="text-sm text-muted-foreground">e suddivisi per appalto</div>
               </div>
               <div className="text-center">
                 <div className="flex justify-center mb-2">
                   <BarChart3 className="h-8 w-8 text-primary" />
                 </div>
-                <div className="text-2xl font-bold text-primary">CRM</div>
-                <div className="text-sm text-muted-foreground">Integrato</div>
+                <div className="text-2xl font-bold text-primary">CRM integrato</div>
+                <div className="text-sm text-muted-foreground">per gestione lead</div>
               </div>
             </div>
           </div>
