@@ -214,7 +214,7 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
           status: 'completed',
           cig_appalto: firstLead?.cig_appalto || null,
           descrizione_appalto: firstLead?.descrizione_appalto || null,
-          value_eur: firstLead?.value_eur || null,
+          value_eur: firstLead?.value_eur || firstLead?.valueEur || firstLead?.value || firstLead?.valorEur || null,
           phase: firstLead?.phase || null,
           cup: firstLead?.cup || null,
           appalto_location: firstLead?.appalto_location || null,
@@ -242,10 +242,10 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
         lead_province: lead.lead_province || null,
         country: lead.country || null,
         appalto_location: lead.appalto_location || null,
-        // Tender-specific fields from each lead
+        // Tender-specific fields from each lead (try multiple possible field names)
         cig_appalto: lead.cig_appalto || null,
         descrizione_appalto: lead.descrizione_appalto || null,
-        value_eur: lead.value_eur || null,
+        value_eur: lead.value_eur || lead.valueEur || lead.value || lead.valorEur || null,
         phase: lead.phase || null,
         cup: lead.cup || null,
       }));
