@@ -26,12 +26,28 @@ serve(async (req) => {
       body: formData,
     });
 
+    console.log('n8n response status:', n8nResponse.status);
+    console.log('n8n response headers:', Object.fromEntries(n8nResponse.headers.entries()));
+
     if (!n8nResponse.ok) {
-      throw new Error(`n8n webhook error: ${n8nResponse.status}`);
+      const errorText = await n8nResponse.text();
+      console.error('n8n webhook error response:', errorText);
+      throw new Error(`n8n webhook error: ${n8nResponse.status} - ${errorText}`);
     }
 
-    const result = await n8nResponse.json();
-    console.log('n8n response received:', JSON.stringify(result).substring(0, 200));
+    // Get response as text first to check if it's valid
+    const responseText = await n8nResponse.text();
+    console.log('n8n response text:', responseText.substring(0, 500));
+
+    // Try to parse as JSON
+    let result;
+    try {
+      result = JSON.parse(responseText);
+      console.log('n8n response parsed successfully');
+    } catch (parseError) {
+      console.error('Failed to parse n8n response as JSON:', parseError);
+      throw new Error(`Invalid JSON response from n8n: ${responseText.substring(0, 200)}`);
+    }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
