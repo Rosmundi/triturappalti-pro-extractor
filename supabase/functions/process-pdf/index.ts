@@ -37,7 +37,14 @@ serve(async (req) => {
 
     // Get response as text first to check if it's valid
     const responseText = await n8nResponse.text();
+    console.log('n8n response text length:', responseText.length);
     console.log('n8n response text:', responseText.substring(0, 500));
+
+    // Check if response is empty
+    if (!responseText || responseText.trim().length === 0) {
+      console.error('n8n webhook returned empty response');
+      throw new Error('Il workflow n8n non ha restituito dati. Verifica che il workflow sia configurato per restituire una risposta JSON con i lead estratti.');
+    }
 
     // Try to parse as JSON
     let result;
@@ -46,7 +53,12 @@ serve(async (req) => {
       console.log('n8n response parsed successfully');
     } catch (parseError) {
       console.error('Failed to parse n8n response as JSON:', parseError);
-      throw new Error(`Invalid JSON response from n8n: ${responseText.substring(0, 200)}`);
+      throw new Error(`Risposta non valida da n8n (non è JSON): ${responseText.substring(0, 200)}`);
+    }
+
+    // Validate the response structure
+    if (!result || typeof result !== 'object') {
+      throw new Error('La risposta di n8n non contiene un oggetto JSON valido');
     }
 
     return new Response(JSON.stringify(result), {
