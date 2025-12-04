@@ -131,7 +131,7 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
       formData.append('file', uploadedFile.file);
       formData.append('filename', uploadedFile.name);
       
-      // Call the edge function - now returns immediately with async processing
+      // Call the edge function - waits for n8n response
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-pdf`, {
         method: 'POST',
         body: formData,
@@ -145,8 +145,6 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
       const result = await response.json();
       console.log('Risposta edge function:', result);
 
-      // The edge function now handles saving to database in background
-      // Mark as processing - user should check "Appalti elaborati" for results
       setFiles(prev => prev.map(f => 
         f.id === fileId 
           ? { ...f, status: 'completed', progress: 100 }
@@ -154,8 +152,8 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
       ));
 
       toast({
-        title: "Elaborazione avviata",
-        description: `Il file "${uploadedFile.name}" è in elaborazione. Controlla la pagina "Appalti elaborati" tra qualche minuto per vedere i risultati.`,
+        title: "Elaborazione completata",
+        description: result.message || `${result.leadsCount || 0} lead estratti e salvati`,
       });
 
     } catch (error) {

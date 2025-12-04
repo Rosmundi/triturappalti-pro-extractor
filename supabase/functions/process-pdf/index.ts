@@ -8,47 +8,63 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Background task to process PDF via n8n and save results
-async function processInBackground(uploadId: string, formData: FormData, filename: string) {
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  );
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    console.log(`[Background] Starting n8n processing for upload ${uploadId}...`);
+    console.log('Receiving PDF for processing...');
     
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Get the form data from the request
+    const formData = await req.formData();
+    const filename = formData.get('filename') as string || 'unknown.pdf';
+    
+    console.log(`Processing file: ${filename}`);
+    console.log('Forwarding to n8n webhook...');
+
+    // Forward to n8n webhook
     const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
       body: formData,
     });
 
-    console.log(`[Background] n8n response status: ${n8nResponse.status}`);
+    console.log(`n8n response status: ${n8nResponse.status}`);
 
     if (!n8nResponse.ok) {
       const errorText = await n8nResponse.text();
-      console.error(`[Background] n8n error: ${errorText}`);
+      console.error('n8n error response:', errorText);
       
-      await supabase.from('uploads').update({ status: 'error' }).eq('id', uploadId);
-      return;
+      // Provide user-friendly error messages based on status
+      if (n8nResponse.status === 524) {
+        throw new Error('Timeout di Cloudflare: il file PDF è troppo grande. Prova con file più piccoli (elaborazione < 2 minuti).');
+      } else if (n8nResponse.status >= 500) {
+        throw new Error(`Errore del server n8n (${n8nResponse.status}). Riprova più tardi.`);
+      } else {
+        throw new Error(`Errore n8n: ${n8nResponse.status}`);
+      }
     }
 
     const responseText = await n8nResponse.text();
-    console.log(`[Background] n8n response length: ${responseText.length}`);
+    console.log('n8n response length:', responseText.length);
 
     if (!responseText || responseText.trim().length === 0) {
-      console.error('[Background] Empty response from n8n');
-      await supabase.from('uploads').update({ status: 'error' }).eq('id', uploadId);
-      return;
+      throw new Error('Risposta vuota da n8n');
     }
 
     let result;
     try {
       result = JSON.parse(responseText);
+      console.log('Parsed n8n response successfully');
     } catch (parseError) {
-      console.error('[Background] Failed to parse JSON:', parseError);
-      await supabase.from('uploads').update({ status: 'error' }).eq('id', uploadId);
-      return;
+      console.error('Failed to parse n8n response as JSON:', parseError);
+      throw new Error('Risposta n8n non valida (non è JSON)');
     }
 
     // Normalize the response to get leads array
@@ -67,19 +83,18 @@ async function processInBackground(uploadId: string, formData: FormData, filenam
       leadsArray = [result];
     }
 
-    console.log(`[Background] Extracted ${leadsArray.length} leads`);
+    console.log(`Extracted ${leadsArray.length} leads from n8n response`);
 
     if (leadsArray.length === 0) {
-      console.error('[Background] No leads found');
-      await supabase.from('uploads').update({ status: 'error' }).eq('id', uploadId);
-      return;
+      throw new Error('Nessun lead trovato nella risposta di n8n');
     }
 
-    // Update upload with tender info from first lead
+    // Create upload record with tender info from first lead
     const firstLead = leadsArray[0];
-    const { error: updateError } = await supabase
+    const { data: uploadData, error: uploadError } = await supabase
       .from('uploads')
-      .update({
+      .insert({
+        filename,
         status: 'completed',
         cig_appalto: firstLead?.cig_appalto || null,
         descrizione_appalto: firstLead?.descrizione_appalto || null,
@@ -88,16 +103,19 @@ async function processInBackground(uploadId: string, formData: FormData, filenam
         cup: firstLead?.cup || null,
         appalto_location: firstLead?.appalto_location || null,
       })
-      .eq('id', uploadId);
+      .select()
+      .single();
 
-    if (updateError) {
-      console.error('[Background] Error updating upload:', updateError);
-      return;
+    if (uploadError) {
+      console.error('Error creating upload record:', uploadError);
+      throw new Error('Impossibile salvare il record di upload');
     }
 
-    // Insert all leads
+    console.log(`Created upload record with ID: ${uploadData.id}`);
+
+    // Insert all leads linked to this upload
     const leadsToInsert = leadsArray.map(lead => ({
-      upload_id: uploadId,
+      upload_id: uploadData.id,
       lead_company: lead.lead_company || 'N/A',
       lead_surname: lead.lead_surname || null,
       lead_email: lead.lead_email || null,
@@ -123,69 +141,25 @@ async function processInBackground(uploadId: string, formData: FormData, filenam
     const { error: leadsError } = await supabase.from('leads').insert(leadsToInsert);
 
     if (leadsError) {
-      console.error('[Background] Error inserting leads:', leadsError);
-      await supabase.from('uploads').update({ status: 'error' }).eq('id', uploadId);
-      return;
+      console.error('Error inserting leads:', leadsError);
+      // Delete the upload record if leads insertion fails
+      await supabase.from('uploads').delete().eq('id', uploadData.id);
+      throw new Error('Impossibile salvare i lead nel database');
     }
 
-    console.log(`[Background] Successfully saved ${leadsArray.length} leads for upload ${uploadId}`);
+    console.log(`Successfully saved ${leadsArray.length} leads`);
 
-  } catch (error) {
-    console.error('[Background] Error:', error);
-    await supabase.from('uploads').update({ status: 'error' }).eq('id', uploadId);
-  }
-}
-
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    console.log('Receiving PDF for async processing...');
-    
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Get the form data from the request
-    const formData = await req.formData();
-    const filename = formData.get('filename') as string || 'unknown.pdf';
-    
-    // Create upload record immediately with 'processing' status
-    const { data: uploadData, error: uploadError } = await supabase
-      .from('uploads')
-      .insert({
-        filename,
-        status: 'processing',
-      })
-      .select()
-      .single();
-
-    if (uploadError) {
-      console.error('Error creating upload record:', uploadError);
-      throw new Error('Impossibile creare il record di upload');
-    }
-
-    console.log(`Created upload record ${uploadData.id}, starting background processing...`);
-
-    // Start background processing (don't await)
-    EdgeRuntime.waitUntil(processInBackground(uploadData.id, formData, filename));
-
-    // Return immediately with upload ID
     return new Response(JSON.stringify({ 
       success: true,
-      message: 'Elaborazione avviata in background',
+      message: `Elaborazione completata: ${leadsArray.length} lead estratti`,
       uploadId: uploadData.id,
-      status: 'processing'
+      leadsCount: leadsArray.length
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error processing PDF:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
