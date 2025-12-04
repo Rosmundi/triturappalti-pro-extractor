@@ -32,7 +32,16 @@ serve(async (req) => {
     if (!n8nResponse.ok) {
       const errorText = await n8nResponse.text();
       console.error('n8n webhook error response:', errorText);
-      throw new Error(`n8n webhook error: ${n8nResponse.status} - ${errorText}`);
+      
+      // Handle specific error codes with user-friendly messages
+      if (n8nResponse.status === 524) {
+        throw new Error('Il workflow n8n ha impiegato troppo tempo per elaborare il PDF. Riprova tra qualche minuto o verifica che il workflow n8n sia attivo e non sovraccarico.');
+      }
+      if (n8nResponse.status === 404) {
+        throw new Error('Il webhook n8n non è registrato. Assicurati che il workflow n8n sia attivo e in modalità "Production" (non "Test").');
+      }
+      
+      throw new Error(`Errore dal webhook n8n: ${n8nResponse.status}`);
     }
 
     // Get response as text first to check if it's valid
