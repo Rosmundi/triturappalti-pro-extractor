@@ -107,11 +107,6 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
     }
     
     setIsProcessing(false);
-    
-    toast({
-      title: "File inviati a n8n",
-      description: "I PDF sono stati inviati. Attendi il ritorno dei contatti elaborati.",
-    });
   };
 
   const sendToN8n = async (fileId: string): Promise<void> => {
@@ -145,6 +140,7 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
       const result = await response.json();
       console.log('Risposta edge function:', result);
 
+      // Async processing - file is now being processed in background
       setFiles(prev => prev.map(f => 
         f.id === fileId 
           ? { ...f, status: 'completed', progress: 100 }
@@ -152,8 +148,8 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
       ));
 
       toast({
-        title: "Elaborazione completata",
-        description: result.message || `${result.leadsCount || 0} lead estratti e salvati`,
+        title: "PDF inviato",
+        description: result.message || "Elaborazione in corso. Controlla 'Appalti elaborati' tra qualche minuto.",
       });
 
     } catch (error) {
