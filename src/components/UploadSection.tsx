@@ -120,7 +120,7 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
 
     setFiles(prev => prev.map(f => 
       f.id === fileId 
-        ? { ...f, status: 'processing', progress: 0 }
+        ? { ...f, status: 'processing', progress: 50 }
         : f
     ));
 
@@ -131,55 +131,32 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
       formData.append('file', uploadedFile.file);
       formData.append('filename', uploadedFile.name);
       
-      // Call the edge function instead of n8n directly to avoid CORS issues
+      // Call the edge function - now returns immediately with async processing
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-pdf`, {
         method: 'POST',
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
-      console.log('Risposta da n8n:', result);
+      console.log('Risposta edge function:', result);
 
+      // The edge function now handles saving to database in background
+      // Mark as processing - user should check "Appalti elaborati" for results
       setFiles(prev => prev.map(f => 
         f.id === fileId 
           ? { ...f, status: 'completed', progress: 100 }
           : f
       ));
 
-      // Normalizza la risposta di n8n per gestire correttamente tutti i lead
-      // Può arrivare come:
-      // - array con oggetto contenente 'data': [{ data: [...] }]
-      // - array diretto di lead: [lead1, lead2, ...]
-      // - oggetto con proprietà `leads`: { leads: [...] }
-      // - oggetto con proprietà `data`: { data: [...] }
-      // - singolo oggetto lead: { lead }
-      let leadsArray: any[] = [];
-      if (Array.isArray(result)) {
-        // Check if it's an array with an object containing 'data' array
-        if (result.length > 0 && result[0].data && Array.isArray(result[0].data)) {
-          leadsArray = result[0].data;
-        } else {
-          leadsArray = result;
-        }
-      } else if (Array.isArray((result as any).leads)) {
-        leadsArray = (result as any).leads;
-      } else if (Array.isArray((result as any).data)) {
-        leadsArray = (result as any).data;
-      } else if (result) {
-        leadsArray = [result];
-      }
-      
-      console.log('Lead estratti da n8n:', leadsArray.length, leadsArray);
-      
-      if (leadsArray.length > 0) {
-        await saveToDatabase(uploadedFile.name, leadsArray);
-      } else {
-        throw new Error('Nessun lead trovato nella risposta');
-      }
+      toast({
+        title: "Elaborazione avviata",
+        description: `Il file "${uploadedFile.name}" è in elaborazione. Controlla la pagina "Appalti elaborati" tra qualche minuto per vedere i risultati.`,
+      });
 
     } catch (error) {
       console.error('Errore invio a n8n:', error);
@@ -191,7 +168,7 @@ export const UploadSection = ({ onLeadsExtracted }: UploadSectionProps) => {
       
       toast({
         title: "Errore",
-        description: "Impossibile inviare il file a n8n. Riprova.",
+        description: error instanceof Error ? error.message : "Impossibile inviare il file. Riprova.",
         variant: "destructive",
       });
     }
