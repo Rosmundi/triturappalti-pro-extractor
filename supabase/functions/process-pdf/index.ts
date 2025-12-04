@@ -15,7 +15,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Receiving PDF for processing...');
+    console.log('Receiving PDF for async processing...');
     
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -27,133 +27,88 @@ serve(async (req) => {
     const filename = formData.get('filename') as string || 'unknown.pdf';
     
     console.log(`Processing file: ${filename}`);
-    console.log('Forwarding to n8n webhook...');
 
-    // Forward to n8n webhook
-    const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
-      method: 'POST',
-      body: formData,
-    });
-
-    console.log(`n8n response status: ${n8nResponse.status}`);
-
-    if (!n8nResponse.ok) {
-      const errorText = await n8nResponse.text();
-      console.error('n8n error response:', errorText);
-      
-      // Provide user-friendly error messages based on status
-      if (n8nResponse.status === 524) {
-        throw new Error('Timeout di Cloudflare: il file PDF è troppo grande. Prova con file più piccoli (elaborazione < 2 minuti).');
-      } else if (n8nResponse.status >= 500) {
-        throw new Error(`Errore del server n8n (${n8nResponse.status}). Riprova più tardi.`);
-      } else {
-        throw new Error(`Errore n8n: ${n8nResponse.status}`);
-      }
-    }
-
-    const responseText = await n8nResponse.text();
-    console.log('n8n response length:', responseText.length);
-
-    if (!responseText || responseText.trim().length === 0) {
-      throw new Error('Risposta vuota da n8n');
-    }
-
-    let result;
-    try {
-      result = JSON.parse(responseText);
-      console.log('Parsed n8n response successfully');
-    } catch (parseError) {
-      console.error('Failed to parse n8n response as JSON:', parseError);
-      throw new Error('Risposta n8n non valida (non è JSON)');
-    }
-
-    // Normalize the response to get leads array
-    let leadsArray: any[] = [];
-    if (Array.isArray(result)) {
-      if (result.length > 0 && result[0].data && Array.isArray(result[0].data)) {
-        leadsArray = result[0].data;
-      } else {
-        leadsArray = result;
-      }
-    } else if (Array.isArray(result?.leads)) {
-      leadsArray = result.leads;
-    } else if (Array.isArray(result?.data)) {
-      leadsArray = result.data;
-    } else if (result) {
-      leadsArray = [result];
-    }
-
-    console.log(`Extracted ${leadsArray.length} leads from n8n response`);
-
-    if (leadsArray.length === 0) {
-      throw new Error('Nessun lead trovato nella risposta di n8n');
-    }
-
-    // Create upload record with tender info from first lead
-    const firstLead = leadsArray[0];
+    // Create upload record with 'processing' status FIRST
     const { data: uploadData, error: uploadError } = await supabase
       .from('uploads')
       .insert({
         filename,
-        status: 'completed',
-        cig_appalto: firstLead?.cig_appalto || null,
-        descrizione_appalto: firstLead?.descrizione_appalto || null,
-        value_eur: firstLead?.value_eur || null,
-        phase: firstLead?.phase || null,
-        cup: firstLead?.cup || null,
-        appalto_location: firstLead?.appalto_location || null,
+        status: 'processing',
       })
       .select()
       .single();
 
     if (uploadError) {
       console.error('Error creating upload record:', uploadError);
-      throw new Error('Impossibile salvare il record di upload');
+      throw new Error('Impossibile creare il record di upload');
     }
 
-    console.log(`Created upload record with ID: ${uploadData.id}`);
+    const uploadId = uploadData.id;
+    console.log(`Created upload record with ID: ${uploadId}`);
 
-    // Insert all leads linked to this upload
-    const leadsToInsert = leadsArray.map(lead => ({
-      upload_id: uploadData.id,
-      lead_company: lead.lead_company || 'N/A',
-      lead_surname: lead.lead_surname || null,
-      lead_email: lead.lead_email || null,
-      lead_number: lead.lead_number || null,
-      project_id: lead.project_id || null,
-      entity_role: lead.entity_role || null,
-      lead_category: lead.lead_category || null,
-      quality_status: lead.quality_status || null,
-      website: lead.website || null,
-      street: lead.street || null,
-      cap: lead.cap || null,
-      lead_city: lead.lead_city || null,
-      lead_province: lead.lead_province || null,
-      country: lead.country || null,
-      appalto_location: lead.appalto_location || null,
-      cig_appalto: lead.cig_appalto || null,
-      descrizione_appalto: lead.descrizione_appalto || null,
-      value_eur: lead.value_eur || null,
-      phase: lead.phase || null,
-      cup: lead.cup || null,
-    }));
+    // Get the callback URL for n8n to use
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const callbackUrl = `${supabaseUrl}/functions/v1/receive-n8n-results`;
 
-    const { error: leadsError } = await supabase.from('leads').insert(leadsToInsert);
+    // Append upload_id and callback_url to formData for n8n
+    formData.append('upload_id', uploadId);
+    formData.append('callback_url', callbackUrl);
 
-    if (leadsError) {
-      console.error('Error inserting leads:', leadsError);
-      // Delete the upload record if leads insertion fails
-      await supabase.from('uploads').delete().eq('id', uploadData.id);
-      throw new Error('Impossibile salvare i lead nel database');
+    console.log(`Forwarding to n8n with callback URL: ${callbackUrl}`);
+
+    // Forward to n8n webhook - fire and forget style with short timeout
+    // We don't wait for the full response, just confirm n8n received it
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout just to confirm receipt
+
+    try {
+      const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      console.log(`n8n initial response status: ${n8nResponse.status}`);
+
+      if (!n8nResponse.ok && n8nResponse.status !== 504 && n8nResponse.status !== 524) {
+        // If n8n immediately rejects, mark as error
+        const errorText = await n8nResponse.text();
+        console.error('n8n error response:', errorText);
+        
+        await supabase
+          .from('uploads')
+          .update({ status: 'error' })
+          .eq('id', uploadId);
+        
+        throw new Error(`Errore n8n: ${n8nResponse.status}`);
+      }
+
+      // For timeout responses (504, 524), that's expected - n8n is still processing
+      if (n8nResponse.status === 504 || n8nResponse.status === 524) {
+        console.log('n8n is processing in background (timeout response expected)');
+      }
+
+    } catch (fetchError) {
+      // AbortError means timeout - that's OK, n8n is processing
+      if (fetchError.name === 'AbortError') {
+        console.log('Request to n8n timed out - n8n is processing in background');
+      } else {
+        console.error('Error sending to n8n:', fetchError);
+        await supabase
+          .from('uploads')
+          .update({ status: 'error' })
+          .eq('id', uploadId);
+        throw new Error('Impossibile inviare il file a n8n');
+      }
     }
 
-    console.log(`Successfully saved ${leadsArray.length} leads`);
-
+    // Return immediately with upload info
     return new Response(JSON.stringify({ 
       success: true,
-      message: `Elaborazione completata: ${leadsArray.length} lead estratti`,
-      uploadId: uploadData.id,
-      leadsCount: leadsArray.length
+      message: 'Elaborazione avviata. I risultati appariranno nella pagina "Appalti elaborati" quando n8n avrà completato.',
+      uploadId: uploadId,
+      status: 'processing'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
