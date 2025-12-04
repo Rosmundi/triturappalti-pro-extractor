@@ -35,7 +35,7 @@ serve(async (req) => {
       
       // Handle specific error codes with user-friendly messages
       if (n8nResponse.status === 524) {
-        throw new Error('Il workflow n8n ha impiegato troppo tempo per elaborare il PDF. Riprova tra qualche minuto o verifica che il workflow n8n sia attivo e non sovraccarico.');
+        throw new Error('Timeout di Cloudflare: il PDF è molto grande e n8n sta ancora elaborando. L\'elaborazione potrebbe essere completata su n8n. Controlla il workflow n8n e ricarica la pagina "Appalti elaborati" tra qualche minuto.');
       }
       if (n8nResponse.status === 404) {
         throw new Error('Il webhook n8n non è registrato. Assicurati che il workflow n8n sia attivo e in modalità "Production" (non "Test").');
