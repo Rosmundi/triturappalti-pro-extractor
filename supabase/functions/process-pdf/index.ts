@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const N8N_WEBHOOK_URL = "https://mrosmundi.app.n8n.cloud/webhook-test/8b10b1ca-c0d3-4906-9606-7824781c7af0";
+const N8N_WEBHOOK_URL = "https://mrosmundi.app.n8n.cloud/webhook/8b10b1ca-c0d3-4906-9606-7824781c7af0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
