@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronDown, ChevronRight, Send, Loader2, Trash2, FileText, Briefcase, Users, AlertTriangle } from "lucide-react";
+import { FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -289,6 +291,71 @@ export default function ProcessedTenders() {
     return allLeads.filter(lead => selectedIds.has(lead.id));
   };
 
+  const exportToExcel = (upload: Upload) => {
+    try {
+      const rows = upload.leads.map((lead) => {
+        const tender = upload.tenders.find((t) => t.leads.some((l) => l.id === lead.id));
+        return {
+          "File": upload.filename,
+          "Data caricamento": new Date(upload.uploaded_at).toLocaleString("it-IT"),
+          "Stato": upload.status,
+          "Upload ID": upload.id,
+          "Project ID": lead.project_id || tender?.project_id || "",
+          "CIG Appalto": tender?.cig_appalto || lead.cig_appalto || "",
+          "CUP": tender?.cup || lead.cup || "",
+          "Descrizione Appalto": tender?.descrizione_appalto || lead.descrizione_appalto || "",
+          "Valore (EUR)": tender?.value_eur || lead.value_eur || "",
+          "Fase": tender?.phase || lead.phase || "",
+          "Località Appalto": tender?.appalto_location || lead.appalto_location || "",
+          "Azienda": lead.lead_company || "",
+          "Referente": lead.lead_surname || "",
+          "Email": lead.lead_email || "",
+          "Telefono": lead.lead_number || "",
+          "Categoria": lead.lead_category || "",
+          "Ruolo": lead.entity_role || "",
+          "Qualità": lead.quality_status || "",
+          "Website": lead.website || "",
+          "Indirizzo": lead.street || "",
+          "CAP": lead.cap || "",
+          "Città": lead.lead_city || "",
+          "Provincia": lead.lead_province || "",
+          "Paese": lead.country || "",
+          "Note": lead.notes || "",
+          "Lead ID": lead.id,
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      // Auto-size columns based on header / values
+      const headers = Object.keys(rows[0] || { "Nessun dato": "" });
+      ws["!cols"] = headers.map((h) => {
+        const maxLen = Math.max(
+          h.length,
+          ...rows.map((r) => String((r as Record<string, unknown>)[h] ?? "").length)
+        );
+        return { wch: Math.min(Math.max(maxLen + 2, 10), 60) };
+      });
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Appalto");
+
+      const safeName = upload.filename.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9-_]+/g, "_");
+      XLSX.writeFile(wb, `appalto_${safeName}.xlsx`);
+
+      toast({
+        title: "Esportazione completata",
+        description: `File Excel scaricato (${rows.length} lead)`,
+      });
+    } catch (error) {
+      console.error("Errore esportazione Excel:", error);
+      toast({
+        title: "Errore",
+        description: "Impossibile esportare in Excel",
+        variant: "destructive",
+      });
+    }
+  };
+
   const sendToCRM = async (upload: Upload) => {
     const leadsToSend = getSelectedLeadsForUpload(upload.id, upload.leads);
     
@@ -435,6 +502,18 @@ export default function ProcessedTenders() {
                             className="cursor-pointer"
                             title="Seleziona tutti i lead di questo PDF"
                           />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              exportToExcel(upload);
+                            }}
+                            className="text-green-700 hover:text-green-800 hover:bg-green-100 print:hidden"
+                            title="Esporta appalto in Excel"
+                          >
+                            <FileSpreadsheet className="h-4 w-4" />
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
