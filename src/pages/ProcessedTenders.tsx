@@ -103,6 +103,49 @@ export default function ProcessedTenders() {
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const { toast } = useToast();
 
+  const [colWidths, setColWidths] = useState<Record<ColKey, number>>(() => {
+    const defaults = COLUMN_DEFS.reduce((acc, c) => {
+      acc[c.key] = c.width;
+      return acc;
+    }, {} as Record<ColKey, number>);
+    try {
+      const raw = localStorage.getItem(COL_WIDTHS_STORAGE_KEY);
+      if (raw) return { ...defaults, ...JSON.parse(raw) };
+    } catch {
+      /* ignore */
+    }
+    return defaults;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(COL_WIDTHS_STORAGE_KEY, JSON.stringify(colWidths));
+    } catch {
+      /* ignore */
+    }
+  }, [colWidths]);
+
+  const startResize = (key: ColKey, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startWidth = colWidths[key];
+    const onMove = (ev: MouseEvent) => {
+      const next = Math.max(40, startWidth + (ev.clientX - startX));
+      setColWidths((prev) => ({ ...prev, [key]: next }));
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
   useEffect(() => {
     fetchUploads();
   }, []);
