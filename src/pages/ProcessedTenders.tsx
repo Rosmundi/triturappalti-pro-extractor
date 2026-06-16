@@ -535,6 +535,19 @@ export default function ProcessedTenders() {
           // Lead info (Level 3)
           ...lead,
           notes: lead.notes ?? "",
+          // New fields (tender + lead extras + manual notes)
+          nome_appalto: lead.nome_appalto ?? tender?.nome_appalto ?? "",
+          categoria_progetto: lead.categoria_progetto ?? "",
+          tipo_intervento: lead.tipo_intervento ?? tender?.tipo_intervento ?? "",
+          committente_tipo: lead.committente_tipo ?? tender?.committente_tipo ?? "",
+          categorie_og: lead.categorie_og ?? tender?.categorie_og ?? "",
+          procedura_gara: lead.procedura_gara ?? tender?.procedura_gara ?? "",
+          finanziamento: lead.finanziamento ?? tender?.finanziamento ?? "",
+          data_appalto: lead.data_appalto ?? tender?.data_appalto ?? "",
+          data_fine_lavori: lead.data_fine_lavori ?? tender?.data_fine_lavori ?? "",
+          termine_offerta: lead.termine_offerta ?? tender?.termine_offerta ?? "",
+          note: lead.note ?? "",
+          note_appalto: lead.note_appalto ?? "",
         };
       });
 
