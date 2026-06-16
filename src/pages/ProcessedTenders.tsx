@@ -101,6 +101,7 @@ interface Tender {
   data_appalto: string | null;
   data_fine_lavori: string | null;
   termine_offerta: string | null;
+  note_appalto: string | null;
   leads: Lead[];
 }
 
@@ -213,6 +214,7 @@ export default function ProcessedTenders() {
                 data_appalto: lead.data_appalto ?? null,
                 data_fine_lavori: lead.data_fine_lavori ?? null,
                 termine_offerta: lead.termine_offerta ?? null,
+                note_appalto: lead.note_appalto ?? null,
                 leads: []
               });
             }
@@ -305,7 +307,7 @@ export default function ProcessedTenders() {
 
   const updateLeadField = async (
     leadId: string,
-    field: 'note' | 'note_appalto' | 'notes',
+    field: 'note' | 'notes',
     value: string
   ) => {
     setSavingNoteId(leadId + ':' + field);
@@ -313,8 +315,6 @@ export default function ProcessedTenders() {
       const patch =
         field === 'note'
           ? { note: value }
-          : field === 'note_appalto'
-          ? { note_appalto: value }
           : { notes: value };
       const { error } = await supabase
         .from('leads')
@@ -336,7 +336,7 @@ export default function ProcessedTenders() {
   const handleLeadFieldChange = (
     uploadId: string,
     leadId: string,
-    field: 'note' | 'note_appalto',
+    field: 'note',
     value: string
   ) => {
     setUploads(prev => prev.map(u => {
@@ -350,6 +350,42 @@ export default function ProcessedTenders() {
         })),
       };
     }));
+  };
+
+  const handleTenderNoteChange = (uploadId: string, projectId: string, value: string) => {
+    setUploads(prev => prev.map(u => {
+      if (u.id !== uploadId) return u;
+      return {
+        ...u,
+        leads: u.leads.map(l => l.project_id === projectId ? { ...l, note_appalto: value } : l),
+        tenders: u.tenders.map(t =>
+          t.project_id === projectId
+            ? { ...t, note_appalto: value, leads: t.leads.map(l => ({ ...l, note_appalto: value })) }
+            : t
+        ),
+      };
+    }));
+  };
+
+  const saveTenderNote = async (uploadId: string, projectId: string, value: string) => {
+    setSavingNoteId('tender:' + uploadId + ':' + projectId);
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ note_appalto: value })
+        .eq('upload_id', uploadId)
+        .eq('project_id', projectId);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Errore salvataggio nota appalto:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare la nota appalto",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingNoteId(null);
+    }
   };
 
   const toggleSelectAllTender = (uploadId: string, tender: Tender) => {
@@ -772,11 +808,11 @@ export default function ProcessedTenders() {
                                   {/* Level 3: Leads */}
                                   {isTenderExpanded && (
                                     <CardContent className="pt-4">
-                                      {/* Dettagli appalto */}
-                                      {(tender.categorie_og || tender.tipo_intervento || tender.committente_tipo || tender.procedura_gara || tender.finanziamento || tender.data_appalto || tender.data_fine_lavori || tender.termine_offerta) && (
-                                        <div className="mb-4 rounded-md border bg-muted/40 p-3">
-                                          <div className="text-sm font-semibold mb-2">Dettagli appalto</div>
-                                          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+                                       {/* Dettagli appalto */}
+                                       <div className="mb-4 rounded-md border bg-muted/40 p-3">
+                                         <div className="text-sm font-semibold mb-2">Dettagli appalto</div>
+                                         {(tender.categorie_og || tender.tipo_intervento || tender.committente_tipo || tender.procedura_gara || tender.finanziamento || tender.data_appalto || tender.data_fine_lavori || tender.termine_offerta) && (
+                                           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs mb-3">
                                             {tender.categorie_og && (<div><span className="text-muted-foreground">Categorie OG:</span> <strong>{tender.categorie_og}</strong></div>)}
                                             {tender.tipo_intervento && (<div><span className="text-muted-foreground">Tipo intervento:</span> <strong>{tender.tipo_intervento}</strong></div>)}
                                             {tender.committente_tipo && (<div><span className="text-muted-foreground">Committente:</span> <strong>{tender.committente_tipo}</strong></div>)}
@@ -785,9 +821,34 @@ export default function ProcessedTenders() {
                                             {tender.data_appalto && (<div><span className="text-muted-foreground">Appalto:</span> <strong>{tender.data_appalto}</strong></div>)}
                                             {tender.data_fine_lavori && (<div><span className="text-muted-foreground">Fine lavori:</span> <strong>{tender.data_fine_lavori}</strong></div>)}
                                             {tender.termine_offerta && (<div><span className="text-muted-foreground">Termine offerta:</span> <strong>{tender.termine_offerta}</strong></div>)}
-                                          </div>
-                                        </div>
-                                      )}
+                                           </div>
+                                         )}
+                                         <div>
+                                           <div className="text-xs font-semibold text-muted-foreground mb-1">Nota appalto</div>
+                                           <textarea
+                                             value={tender.note_appalto || ''}
+                                             onChange={(e) => handleTenderNoteChange(upload.id, tender.project_id, e.target.value)}
+                                             placeholder="Nota sull'appalto..."
+                                             rows={2}
+                                             className="w-full min-h-[60px] text-sm p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:border-0 print:p-0 print:bg-transparent"
+                                             disabled={savingNoteId === 'tender:' + upload.id + ':' + tender.project_id}
+                                           />
+                                           <Button
+                                             type="button"
+                                             size="sm"
+                                             variant="outline"
+                                             onClick={() => saveTenderNote(upload.id, tender.project_id, tender.note_appalto || '')}
+                                             disabled={savingNoteId === 'tender:' + upload.id + ':' + tender.project_id}
+                                             className="mt-1 h-7 gap-1 print:hidden"
+                                           >
+                                             {savingNoteId === 'tender:' + upload.id + ':' + tender.project_id ? (
+                                               <><Loader2 className="h-3 w-3 animate-spin" />Salvataggio...</>
+                                             ) : (
+                                               <><Save className="h-3 w-3" />Salva nota appalto</>
+                                             )}
+                                           </Button>
+                                         </div>
+                                       </div>
                                       <div className="overflow-x-auto">
                                         <Table className="text-xs [&_th]:px-2 [&_th]:h-9 [&_td]:p-2 table-fixed">
                                           <colgroup>
@@ -875,31 +936,6 @@ export default function ProcessedTenders() {
                                                           <><Loader2 className="h-3 w-3 animate-spin" />Salvataggio...</>
                                                         ) : (
                                                           <><Save className="h-3 w-3" />Salva nota contatto</>
-                                                        )}
-                                                      </Button>
-                                                    </div>
-                                                    <div>
-                                                      <div className="text-[10px] font-semibold text-muted-foreground mb-1 print:hidden">Nota appalto</div>
-                                                      <textarea
-                                                        value={lead.note_appalto || ''}
-                                                        onChange={(e) => handleLeadFieldChange(upload.id, lead.id, 'note_appalto', e.target.value)}
-                                                        placeholder="Nota sull'appalto..."
-                                                        rows={3}
-                                                        className="w-full min-h-[70px] text-sm p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:border-0 print:p-0 print:bg-transparent"
-                                                        disabled={savingNoteId === lead.id + ':note_appalto'}
-                                                      />
-                                                      <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => updateLeadField(lead.id, 'note_appalto', lead.note_appalto || '')}
-                                                        disabled={savingNoteId === lead.id + ':note_appalto'}
-                                                        className="mt-1 h-7 w-full gap-1 print:hidden"
-                                                      >
-                                                        {savingNoteId === lead.id + ':note_appalto' ? (
-                                                          <><Loader2 className="h-3 w-3 animate-spin" />Salvataggio...</>
-                                                        ) : (
-                                                          <><Save className="h-3 w-3" />Salva nota appalto</>
                                                         )}
                                                       </Button>
                                                     </div>
