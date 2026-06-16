@@ -722,7 +722,10 @@ export default function ProcessedTenders() {
                                       <div className="flex items-center gap-3 flex-1">
                                         <Briefcase className="h-4 w-4 text-primary" />
                                         <div className="space-y-1">
-                                          <div className="font-semibold">{tender.descrizione_appalto || 'Appalto senza descrizione'}</div>
+                                          <div className="font-semibold">{tender.nome_appalto || tender.descrizione_appalto || 'Appalto senza nome'}</div>
+                                          {tender.descrizione_appalto && tender.nome_appalto && (
+                                            <div className="text-xs text-muted-foreground">{tender.descrizione_appalto}</div>
+                                          )}
                                           <div className="text-xs text-muted-foreground space-x-3">
                                             {tender.cig_appalto && <span><strong>CIG:</strong> {tender.cig_appalto}</span>}
                                             {tender.value_eur && <span><strong>Valore:</strong> €{parseInt(tender.value_eur).toLocaleString()}</span>}
