@@ -914,31 +914,6 @@ export default function ProcessedTenders() {
                                                         )}
                                                       </Button>
                                                     </div>
-                                                    <div>
-                                                      <div className="text-[10px] font-semibold text-muted-foreground mb-1 print:hidden">Nota appalto</div>
-                                                      <textarea
-                                                        value={lead.note_appalto || ''}
-                                                        onChange={(e) => handleLeadFieldChange(upload.id, lead.id, 'note_appalto', e.target.value)}
-                                                        placeholder="Nota sull'appalto..."
-                                                        rows={3}
-                                                        className="w-full min-h-[70px] text-sm p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:border-0 print:p-0 print:bg-transparent"
-                                                        disabled={savingNoteId === lead.id + ':note_appalto'}
-                                                      />
-                                                      <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => updateLeadField(lead.id, 'note_appalto', lead.note_appalto || '')}
-                                                        disabled={savingNoteId === lead.id + ':note_appalto'}
-                                                        className="mt-1 h-7 w-full gap-1 print:hidden"
-                                                      >
-                                                        {savingNoteId === lead.id + ':note_appalto' ? (
-                                                          <><Loader2 className="h-3 w-3 animate-spin" />Salvataggio...</>
-                                                        ) : (
-                                                          <><Save className="h-3 w-3" />Salva nota appalto</>
-                                                        )}
-                                                      </Button>
-                                                    </div>
                                                   </div>
                                                 </TableCell>
                                               </TableRow>
