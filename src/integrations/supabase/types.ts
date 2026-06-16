@@ -32,6 +32,7 @@ export type Database = {
           lead_number: string | null
           lead_province: string | null
           lead_surname: string | null
+          notes: string | null
           phase: string | null
           project_id: string | null
           quality_status: string | null
@@ -57,6 +58,7 @@ export type Database = {
           lead_number?: string | null
           lead_province?: string | null
           lead_surname?: string | null
+          notes?: string | null
           phase?: string | null
           project_id?: string | null
           quality_status?: string | null
@@ -82,6 +84,7 @@ export type Database = {
           lead_number?: string | null
           lead_province?: string | null
           lead_surname?: string | null
+          notes?: string | null
           phase?: string | null
           project_id?: string | null
           quality_status?: string | null

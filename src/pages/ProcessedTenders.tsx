@@ -49,6 +49,7 @@ interface Lead {
   value_eur: string | null;
   phase: string | null;
   cup: string | null;
+  notes: string | null;
 }
 
 interface Tender {
@@ -79,6 +80,7 @@ export default function ProcessedTenders() {
   const [sendingToCRM, setSendingToCRM] = useState<string | null>(null);
   const [selectedLeads, setSelectedLeads] = useState<Record<string, Set<string>>>({});
   const [selectAllPdf, setSelectAllPdf] = useState<Record<string, boolean>>({});
+  const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -172,6 +174,40 @@ export default function ProcessedTenders() {
       }
       return { ...prev, [uploadId]: uploadSelections };
     });
+  };
+
+  const updateLeadNotes = async (leadId: string, notes: string) => {
+    setSavingNoteId(leadId);
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ notes })
+        .eq('id', leadId);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Errore salvataggio nota:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare la nota",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingNoteId(null);
+    }
+  };
+
+  const handleNoteChange = (uploadId: string, leadId: string, value: string) => {
+    setUploads(prev => prev.map(u => {
+      if (u.id !== uploadId) return u;
+      return {
+        ...u,
+        leads: u.leads.map(l => l.id === leadId ? { ...l, notes: value } : l),
+        tenders: u.tenders.map(t => ({
+          ...t,
+          leads: t.leads.map(l => l.id === leadId ? { ...l, notes: value } : l),
+        })),
+      };
+    }));
   };
 
   const toggleSelectAllTender = (uploadId: string, tender: Tender) => {
@@ -517,6 +553,7 @@ export default function ProcessedTenders() {
                                               <TableHead>Provincia</TableHead>
                                               <TableHead>Website</TableHead>
                                               <TableHead>Qualità</TableHead>
+                                              <TableHead className="min-w-[220px] print:min-w-0">Note</TableHead>
                                             </TableRow>
                                           </TableHeader>
                                           <TableBody>
@@ -553,6 +590,22 @@ export default function ProcessedTenders() {
                                                   <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
                                                     {lead.quality_status || '-'}
                                                   </span>
+                                                </TableCell>
+                                                <TableCell>
+                                                  <textarea
+                                                    defaultValue={lead.notes || ''}
+                                                    onBlur={(e) => {
+                                                      const v = e.target.value;
+                                                      if (v !== (lead.notes || '')) {
+                                                        handleNoteChange(upload.id, lead.id, v);
+                                                        updateLeadNotes(lead.id, v);
+                                                      }
+                                                    }}
+                                                    placeholder="Aggiungi nota..."
+                                                    rows={2}
+                                                    className="w-full min-w-[200px] text-xs p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:border-0 print:p-0 print:bg-transparent"
+                                                    disabled={savingNoteId === lead.id}
+                                                  />
                                                 </TableCell>
                                               </TableRow>
                                             ))}
