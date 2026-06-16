@@ -18,12 +18,18 @@ export type Database = {
         Row: {
           appalto_location: string | null
           cap: string | null
+          categoria_progetto: string | null
+          categorie_og: string | null
           cig_appalto: string | null
+          committente_tipo: string | null
           country: string | null
           created_at: string
           cup: string | null
+          data_appalto: string | null
+          data_fine_lavori: string | null
           descrizione_appalto: string | null
           entity_role: string | null
+          finanziamento: string | null
           id: string
           lead_category: string | null
           lead_city: string | null
@@ -32,11 +38,17 @@ export type Database = {
           lead_number: string | null
           lead_province: string | null
           lead_surname: string | null
+          nome_appalto: string | null
+          note: string | null
+          note_appalto: string | null
           notes: string | null
           phase: string | null
+          procedura_gara: string | null
           project_id: string | null
           quality_status: string | null
           street: string | null
+          termine_offerta: string | null
+          tipo_intervento: string | null
           upload_id: string
           value_eur: string | null
           website: string | null
@@ -44,12 +56,18 @@ export type Database = {
         Insert: {
           appalto_location?: string | null
           cap?: string | null
+          categoria_progetto?: string | null
+          categorie_og?: string | null
           cig_appalto?: string | null
+          committente_tipo?: string | null
           country?: string | null
           created_at?: string
           cup?: string | null
+          data_appalto?: string | null
+          data_fine_lavori?: string | null
           descrizione_appalto?: string | null
           entity_role?: string | null
+          finanziamento?: string | null
           id?: string
           lead_category?: string | null
           lead_city?: string | null
@@ -58,11 +76,17 @@ export type Database = {
           lead_number?: string | null
           lead_province?: string | null
           lead_surname?: string | null
+          nome_appalto?: string | null
+          note?: string | null
+          note_appalto?: string | null
           notes?: string | null
           phase?: string | null
+          procedura_gara?: string | null
           project_id?: string | null
           quality_status?: string | null
           street?: string | null
+          termine_offerta?: string | null
+          tipo_intervento?: string | null
           upload_id: string
           value_eur?: string | null
           website?: string | null
@@ -70,12 +94,18 @@ export type Database = {
         Update: {
           appalto_location?: string | null
           cap?: string | null
+          categoria_progetto?: string | null
+          categorie_og?: string | null
           cig_appalto?: string | null
+          committente_tipo?: string | null
           country?: string | null
           created_at?: string
           cup?: string | null
+          data_appalto?: string | null
+          data_fine_lavori?: string | null
           descrizione_appalto?: string | null
           entity_role?: string | null
+          finanziamento?: string | null
           id?: string
           lead_category?: string | null
           lead_city?: string | null
@@ -84,11 +114,17 @@ export type Database = {
           lead_number?: string | null
           lead_province?: string | null
           lead_surname?: string | null
+          nome_appalto?: string | null
+          note?: string | null
+          note_appalto?: string | null
           notes?: string | null
           phase?: string | null
+          procedura_gara?: string | null
           project_id?: string | null
           quality_status?: string | null
           street?: string | null
+          termine_offerta?: string | null
+          tipo_intervento?: string | null
           upload_id?: string
           value_eur?: string | null
           website?: string | null
