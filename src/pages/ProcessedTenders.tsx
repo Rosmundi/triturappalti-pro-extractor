@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronDown, ChevronRight, Send, Loader2, Trash2, FileText, Briefcase, Users, AlertTriangle } from "lucide-react";
+import { FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 import {
   AlertDialog,
   AlertDialogAction,
