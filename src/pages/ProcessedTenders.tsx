@@ -28,6 +28,24 @@ import {
 } from "@/components/ui/table";
 import { WEBHOOKS } from "@/config/webhooks";
 
+const COLUMN_DEFS = [
+  { key: "select", label: "", width: 36 },
+  { key: "company", label: "Azienda", width: 160 },
+  { key: "surname", label: "Referente", width: 110 },
+  { key: "email", label: "Email", width: 180 },
+  { key: "phone", label: "Telefono", width: 110 },
+  { key: "category", label: "Categoria", width: 110 },
+  { key: "role", label: "Ruolo", width: 110 },
+  { key: "city", label: "Città", width: 100 },
+  { key: "province", label: "Prov.", width: 60 },
+  { key: "web", label: "Web", width: 60 },
+  { key: "quality", label: "Qualità", width: 90 },
+  { key: "notes", label: "Note", width: 320 },
+] as const;
+
+type ColKey = (typeof COLUMN_DEFS)[number]["key"];
+const COL_WIDTHS_STORAGE_KEY = "appalti.colWidths.v1";
+
 interface Lead {
   id: string;
   lead_company: string;
