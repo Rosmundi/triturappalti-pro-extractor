@@ -305,7 +305,7 @@ export default function ProcessedTenders() {
 
   const updateLeadField = async (
     leadId: string,
-    field: 'note' | 'note_appalto' | 'notes',
+    field: 'note' | 'notes',
     value: string
   ) => {
     setSavingNoteId(leadId + ':' + field);
@@ -313,8 +313,6 @@ export default function ProcessedTenders() {
       const patch =
         field === 'note'
           ? { note: value }
-          : field === 'note_appalto'
-          ? { note_appalto: value }
           : { notes: value };
       const { error } = await supabase
         .from('leads')
@@ -336,7 +334,7 @@ export default function ProcessedTenders() {
   const handleLeadFieldChange = (
     uploadId: string,
     leadId: string,
-    field: 'note' | 'note_appalto',
+    field: 'note',
     value: string
   ) => {
     setUploads(prev => prev.map(u => {
@@ -350,6 +348,42 @@ export default function ProcessedTenders() {
         })),
       };
     }));
+  };
+
+  const handleTenderNoteChange = (uploadId: string, projectId: string, value: string) => {
+    setUploads(prev => prev.map(u => {
+      if (u.id !== uploadId) return u;
+      return {
+        ...u,
+        leads: u.leads.map(l => l.project_id === projectId ? { ...l, note_appalto: value } : l),
+        tenders: u.tenders.map(t =>
+          t.project_id === projectId
+            ? { ...t, note_appalto: value, leads: t.leads.map(l => ({ ...l, note_appalto: value })) }
+            : t
+        ),
+      };
+    }));
+  };
+
+  const saveTenderNote = async (uploadId: string, projectId: string, value: string) => {
+    setSavingNoteId('tender:' + uploadId + ':' + projectId);
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ note_appalto: value })
+        .eq('upload_id', uploadId)
+        .eq('project_id', projectId);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Errore salvataggio nota appalto:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare la nota appalto",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingNoteId(null);
+    }
   };
 
   const toggleSelectAllTender = (uploadId: string, tender: Tender) => {
