@@ -28,6 +28,24 @@ import {
 } from "@/components/ui/table";
 import { WEBHOOKS } from "@/config/webhooks";
 
+const COLUMN_DEFS = [
+  { key: "select", label: "", width: 36 },
+  { key: "company", label: "Azienda", width: 160 },
+  { key: "surname", label: "Referente", width: 110 },
+  { key: "email", label: "Email", width: 180 },
+  { key: "phone", label: "Telefono", width: 110 },
+  { key: "category", label: "Categoria", width: 110 },
+  { key: "role", label: "Ruolo", width: 110 },
+  { key: "city", label: "Città", width: 100 },
+  { key: "province", label: "Prov.", width: 60 },
+  { key: "web", label: "Web", width: 60 },
+  { key: "quality", label: "Qualità", width: 90 },
+  { key: "notes", label: "Note", width: 320 },
+] as const;
+
+type ColKey = (typeof COLUMN_DEFS)[number]["key"];
+const COL_WIDTHS_STORAGE_KEY = "appalti.colWidths.v1";
+
 interface Lead {
   id: string;
   lead_company: string;
@@ -84,6 +102,49 @@ export default function ProcessedTenders() {
   const [selectAllPdf, setSelectAllPdf] = useState<Record<string, boolean>>({});
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const [colWidths, setColWidths] = useState<Record<ColKey, number>>(() => {
+    const defaults = COLUMN_DEFS.reduce((acc, c) => {
+      acc[c.key] = c.width;
+      return acc;
+    }, {} as Record<ColKey, number>);
+    try {
+      const raw = localStorage.getItem(COL_WIDTHS_STORAGE_KEY);
+      if (raw) return { ...defaults, ...JSON.parse(raw) };
+    } catch {
+      /* ignore */
+    }
+    return defaults;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(COL_WIDTHS_STORAGE_KEY, JSON.stringify(colWidths));
+    } catch {
+      /* ignore */
+    }
+  }, [colWidths]);
+
+  const startResize = (key: ColKey, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startWidth = colWidths[key];
+    const onMove = (ev: MouseEvent) => {
+      const next = Math.max(40, startWidth + (ev.clientX - startX));
+      setColWidths((prev) => ({ ...prev, [key]: next }));
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
 
   useEffect(() => {
     fetchUploads();
@@ -616,23 +677,31 @@ export default function ProcessedTenders() {
                                   {isTenderExpanded && (
                                     <CardContent className="pt-4">
                                       <div className="overflow-x-auto">
-                                        <Table className="text-xs [&_th]:px-2 [&_th]:h-9 [&_td]:p-2 table-fixed w-full">
+                                        <Table className="text-xs [&_th]:px-2 [&_th]:h-9 [&_td]:p-2 table-fixed">
+                                          <colgroup>
+                                            {COLUMN_DEFS.map((c) => (
+                                              <col key={c.key} style={{ width: colWidths[c.key] }} />
+                                            ))}
+                                          </colgroup>
                                           <TableHeader>
                                             <TableRow>
-                                              <TableHead className="w-8">
-                                                <Users className="h-4 w-4" />
-                                              </TableHead>
-                                              <TableHead className="w-[12%]">Azienda</TableHead>
-                                              <TableHead className="w-[8%]">Referente</TableHead>
-                                              <TableHead className="w-[12%]">Email</TableHead>
-                                              <TableHead className="w-[8%]">Telefono</TableHead>
-                                              <TableHead className="w-[8%]">Categoria</TableHead>
-                                              <TableHead className="w-[8%]">Ruolo</TableHead>
-                                              <TableHead className="w-[7%]">Città</TableHead>
-                                              <TableHead className="w-[5%]">Prov.</TableHead>
-                                              <TableHead className="w-[5%]">Web</TableHead>
-                                              <TableHead className="w-[6%]">Qualità</TableHead>
-                                              <TableHead className="w-[21%] print:min-w-0">Note</TableHead>
+                                              {COLUMN_DEFS.map((c) => (
+                                                <TableHead
+                                                  key={c.key}
+                                                  className="relative select-none overflow-hidden whitespace-nowrap"
+                                                >
+                                                  {c.key === "select" ? (
+                                                    <Users className="h-4 w-4" />
+                                                  ) : (
+                                                    <span className="block truncate pr-2">{c.label}</span>
+                                                  )}
+                                                  <span
+                                                    onMouseDown={(e) => startResize(c.key, e)}
+                                                    className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40 active:bg-primary/60 print:hidden"
+                                                    title="Trascina per ridimensionare"
+                                                  />
+                                                </TableHead>
+                                              ))}
                                             </TableRow>
                                           </TableHeader>
                                           <TableBody>
@@ -646,26 +715,26 @@ export default function ProcessedTenders() {
                                                     className="cursor-pointer"
                                                   />
                                                 </TableCell>
-                                                <TableCell className="font-medium break-words">{lead.lead_company}</TableCell>
-                                                <TableCell className="break-words">{lead.lead_surname || '-'}</TableCell>
-                                                <TableCell className="break-all">{lead.lead_email || '-'}</TableCell>
-                                                <TableCell className="break-words">{lead.lead_number || '-'}</TableCell>
-                                                <TableCell>
+                                                <TableCell className="font-medium break-words overflow-hidden">{lead.lead_company}</TableCell>
+                                                <TableCell className="break-words overflow-hidden">{lead.lead_surname || '-'}</TableCell>
+                                                <TableCell className="break-all overflow-hidden">{lead.lead_email || '-'}</TableCell>
+                                                <TableCell className="break-words overflow-hidden">{lead.lead_number || '-'}</TableCell>
+                                                <TableCell className="overflow-hidden">
                                                   <span className="bg-secondary px-1.5 py-0.5 rounded break-words inline-block">
                                                     {lead.lead_category || '-'}
                                                   </span>
                                                 </TableCell>
-                                                <TableCell className="break-words">{lead.entity_role || '-'}</TableCell>
-                                                <TableCell className="break-words">{lead.lead_city || '-'}</TableCell>
-                                                <TableCell className="break-words">{lead.lead_province || '-'}</TableCell>
-                                                <TableCell>
+                                                <TableCell className="break-words overflow-hidden">{lead.entity_role || '-'}</TableCell>
+                                                <TableCell className="break-words overflow-hidden">{lead.lead_city || '-'}</TableCell>
+                                                <TableCell className="break-words overflow-hidden">{lead.lead_province || '-'}</TableCell>
+                                                <TableCell className="overflow-hidden">
                                                   {lead.website ? (
                                                     <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                                                       Link
                                                     </a>
                                                   ) : '-'}
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="overflow-hidden">
                                                   <span className="bg-green-100 text-green-800 px-1.5 py-0.5 rounded break-words inline-block">
                                                     {lead.quality_status || '-'}
                                                   </span>
