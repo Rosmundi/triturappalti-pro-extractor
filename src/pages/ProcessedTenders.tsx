@@ -616,23 +616,23 @@ export default function ProcessedTenders() {
                                   {isTenderExpanded && (
                                     <CardContent className="pt-4">
                                       <div className="overflow-x-auto">
-                                        <Table>
+                                        <Table className="text-xs [&_th]:px-2 [&_th]:h-9 [&_td]:p-2 table-fixed w-full">
                                           <TableHeader>
                                             <TableRow>
-                                              <TableHead className="w-12">
+                                              <TableHead className="w-8">
                                                 <Users className="h-4 w-4" />
                                               </TableHead>
-                                              <TableHead>Azienda</TableHead>
-                                              <TableHead>Referente</TableHead>
-                                              <TableHead>Email</TableHead>
-                                              <TableHead>Telefono</TableHead>
-                                              <TableHead>Categoria</TableHead>
-                                              <TableHead>Ruolo</TableHead>
-                                              <TableHead>Città</TableHead>
-                                              <TableHead>Provincia</TableHead>
-                                              <TableHead>Website</TableHead>
-                                              <TableHead>Qualità</TableHead>
-                                              <TableHead className="min-w-[220px] print:min-w-0">Note</TableHead>
+                                              <TableHead className="w-[12%]">Azienda</TableHead>
+                                              <TableHead className="w-[8%]">Referente</TableHead>
+                                              <TableHead className="w-[12%]">Email</TableHead>
+                                              <TableHead className="w-[8%]">Telefono</TableHead>
+                                              <TableHead className="w-[8%]">Categoria</TableHead>
+                                              <TableHead className="w-[8%]">Ruolo</TableHead>
+                                              <TableHead className="w-[7%]">Città</TableHead>
+                                              <TableHead className="w-[5%]">Prov.</TableHead>
+                                              <TableHead className="w-[5%]">Web</TableHead>
+                                              <TableHead className="w-[6%]">Qualità</TableHead>
+                                              <TableHead className="w-[21%] print:min-w-0">Note</TableHead>
                                             </TableRow>
                                           </TableHeader>
                                           <TableBody>
@@ -646,27 +646,27 @@ export default function ProcessedTenders() {
                                                     className="cursor-pointer"
                                                   />
                                                 </TableCell>
-                                                <TableCell className="font-medium">{lead.lead_company}</TableCell>
-                                                <TableCell>{lead.lead_surname || '-'}</TableCell>
-                                                <TableCell>{lead.lead_email || '-'}</TableCell>
-                                                <TableCell>{lead.lead_number || '-'}</TableCell>
+                                                <TableCell className="font-medium break-words">{lead.lead_company}</TableCell>
+                                                <TableCell className="break-words">{lead.lead_surname || '-'}</TableCell>
+                                                <TableCell className="break-all">{lead.lead_email || '-'}</TableCell>
+                                                <TableCell className="break-words">{lead.lead_number || '-'}</TableCell>
                                                 <TableCell>
-                                                  <span className="text-xs bg-secondary px-2 py-1 rounded">
+                                                  <span className="bg-secondary px-1.5 py-0.5 rounded break-words inline-block">
                                                     {lead.lead_category || '-'}
                                                   </span>
                                                 </TableCell>
-                                                <TableCell className="text-xs">{lead.entity_role || '-'}</TableCell>
-                                                <TableCell>{lead.lead_city || '-'}</TableCell>
-                                                <TableCell>{lead.lead_province || '-'}</TableCell>
+                                                <TableCell className="break-words">{lead.entity_role || '-'}</TableCell>
+                                                <TableCell className="break-words">{lead.lead_city || '-'}</TableCell>
+                                                <TableCell className="break-words">{lead.lead_province || '-'}</TableCell>
                                                 <TableCell>
                                                   {lead.website ? (
-                                                    <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs">
+                                                    <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                                                       Link
                                                     </a>
                                                   ) : '-'}
                                                 </TableCell>
                                                 <TableCell>
-                                                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                                  <span className="bg-green-100 text-green-800 px-1.5 py-0.5 rounded break-words inline-block">
                                                     {lead.quality_status || '-'}
                                                   </span>
                                                 </TableCell>
@@ -681,8 +681,8 @@ export default function ProcessedTenders() {
                                                       }
                                                     }}
                                                     placeholder="Aggiungi nota..."
-                                                    rows={2}
-                                                    className="w-full min-w-[200px] text-xs p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:border-0 print:p-0 print:bg-transparent"
+                                                    rows={4}
+                                                    className="w-full min-h-[90px] text-sm p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:border-0 print:p-0 print:bg-transparent"
                                                     disabled={savingNoteId === lead.id}
                                                   />
                                                 </TableCell>
