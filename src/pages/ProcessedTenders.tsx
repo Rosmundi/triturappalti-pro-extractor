@@ -759,6 +759,22 @@ export default function ProcessedTenders() {
                                   {/* Level 3: Leads */}
                                   {isTenderExpanded && (
                                     <CardContent className="pt-4">
+                                      {/* Dettagli appalto */}
+                                      {(tender.categorie_og || tender.tipo_intervento || tender.committente_tipo || tender.procedura_gara || tender.finanziamento || tender.data_appalto || tender.data_fine_lavori || tender.termine_offerta) && (
+                                        <div className="mb-4 rounded-md border bg-muted/40 p-3">
+                                          <div className="text-sm font-semibold mb-2">Dettagli appalto</div>
+                                          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+                                            {tender.categorie_og && (<div><span className="text-muted-foreground">Categorie OG:</span> <strong>{tender.categorie_og}</strong></div>)}
+                                            {tender.tipo_intervento && (<div><span className="text-muted-foreground">Tipo intervento:</span> <strong>{tender.tipo_intervento}</strong></div>)}
+                                            {tender.committente_tipo && (<div><span className="text-muted-foreground">Committente:</span> <strong>{tender.committente_tipo}</strong></div>)}
+                                            {tender.procedura_gara && (<div><span className="text-muted-foreground">Procedura gara:</span> <strong>{tender.procedura_gara}</strong></div>)}
+                                            {tender.finanziamento && (<div><span className="text-muted-foreground">Finanziamento:</span> <strong>{tender.finanziamento}</strong></div>)}
+                                            {tender.data_appalto && (<div><span className="text-muted-foreground">Appalto:</span> <strong>{tender.data_appalto}</strong></div>)}
+                                            {tender.data_fine_lavori && (<div><span className="text-muted-foreground">Fine lavori:</span> <strong>{tender.data_fine_lavori}</strong></div>)}
+                                            {tender.termine_offerta && (<div><span className="text-muted-foreground">Termine offerta:</span> <strong>{tender.termine_offerta}</strong></div>)}
+                                          </div>
+                                        </div>
+                                      )}
                                       <div className="overflow-x-auto">
                                         <Table className="text-xs [&_th]:px-2 [&_th]:h-9 [&_td]:p-2 table-fixed">
                                           <colgroup>
