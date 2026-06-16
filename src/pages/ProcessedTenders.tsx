@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronDown, ChevronRight, Send, Loader2, Trash2, FileText, Briefcase, Users, AlertTriangle } from "lucide-react";
+import { ChevronDown, ChevronRight, Send, Loader2, Trash2, FileText, Briefcase, Users, AlertTriangle, Save } from "lucide-react";
 import { FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -454,7 +454,8 @@ export default function ProcessedTenders() {
           appalto_location: lead.appalto_location,
           
           // Lead info (Level 3)
-          ...lead
+          ...lead,
+          notes: lead.notes ?? "",
         };
       });
 
@@ -741,19 +742,35 @@ export default function ProcessedTenders() {
                                                 </TableCell>
                                                 <TableCell>
                                                   <textarea
-                                                    defaultValue={lead.notes || ''}
-                                                    onBlur={(e) => {
-                                                      const v = e.target.value;
-                                                      if (v !== (lead.notes || '')) {
-                                                        handleNoteChange(upload.id, lead.id, v);
-                                                        updateLeadNotes(lead.id, v);
-                                                      }
-                                                    }}
+                                                    value={lead.notes || ''}
+                                                    onChange={(e) =>
+                                                      handleNoteChange(upload.id, lead.id, e.target.value)
+                                                    }
                                                     placeholder="Aggiungi nota..."
                                                     rows={4}
                                                     className="w-full min-h-[90px] text-sm p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:border-0 print:p-0 print:bg-transparent"
                                                     disabled={savingNoteId === lead.id}
                                                   />
+                                                  <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => updateLeadNotes(lead.id, lead.notes || '')}
+                                                    disabled={savingNoteId === lead.id}
+                                                    className="mt-1 h-7 w-full gap-1 print:hidden"
+                                                  >
+                                                    {savingNoteId === lead.id ? (
+                                                      <>
+                                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                                        Salvataggio...
+                                                      </>
+                                                    ) : (
+                                                      <>
+                                                        <Save className="h-3 w-3" />
+                                                        Salva nota
+                                                      </>
+                                                    )}
+                                                  </Button>
                                                 </TableCell>
                                               </TableRow>
                                             ))}
