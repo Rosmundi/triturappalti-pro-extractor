@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body { background: white !important; }
+  header, nav, .print\:hidden { display: none !important; }
+  .shadow, .shadow-sm, .shadow-md, .shadow-lg { box-shadow: none !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  table { font-size: 11px; }
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
