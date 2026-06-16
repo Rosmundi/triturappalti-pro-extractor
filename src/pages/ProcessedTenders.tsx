@@ -70,6 +70,18 @@ interface Lead {
   phase: string | null;
   cup: string | null;
   notes: string | null;
+  note: string | null;
+  note_appalto: string | null;
+  nome_appalto: string | null;
+  categoria_progetto: string | null;
+  tipo_intervento: string | null;
+  committente_tipo: string | null;
+  categorie_og: string | null;
+  procedura_gara: string | null;
+  finanziamento: string | null;
+  data_appalto: string | null;
+  data_fine_lavori: string | null;
+  termine_offerta: string | null;
 }
 
 interface Tender {
@@ -80,6 +92,15 @@ interface Tender {
   phase: string | null;
   cup: string | null;
   appalto_location: string | null;
+  nome_appalto: string | null;
+  categorie_og: string | null;
+  tipo_intervento: string | null;
+  committente_tipo: string | null;
+  procedura_gara: string | null;
+  finanziamento: string | null;
+  data_appalto: string | null;
+  data_fine_lavori: string | null;
+  termine_offerta: string | null;
   leads: Lead[];
 }
 
