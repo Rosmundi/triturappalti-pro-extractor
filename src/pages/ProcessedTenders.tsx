@@ -204,6 +204,15 @@ export default function ProcessedTenders() {
                 phase: lead.phase,
                 cup: lead.cup,
                 appalto_location: lead.appalto_location,
+                nome_appalto: lead.nome_appalto ?? null,
+                categorie_og: lead.categorie_og ?? null,
+                tipo_intervento: lead.tipo_intervento ?? null,
+                committente_tipo: lead.committente_tipo ?? null,
+                procedura_gara: lead.procedura_gara ?? null,
+                finanziamento: lead.finanziamento ?? null,
+                data_appalto: lead.data_appalto ?? null,
+                data_fine_lavori: lead.data_fine_lavori ?? null,
+                termine_offerta: lead.termine_offerta ?? null,
                 leads: []
               });
             }
