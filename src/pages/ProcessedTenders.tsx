@@ -214,6 +214,7 @@ export default function ProcessedTenders() {
                 data_appalto: lead.data_appalto ?? null,
                 data_fine_lavori: lead.data_fine_lavori ?? null,
                 termine_offerta: lead.termine_offerta ?? null,
+                note_appalto: lead.note_appalto ?? null,
                 leads: []
               });
             }
