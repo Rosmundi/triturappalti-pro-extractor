@@ -101,6 +101,7 @@ interface Tender {
   data_appalto: string | null;
   data_fine_lavori: string | null;
   termine_offerta: string | null;
+  note_appalto: string | null;
   leads: Lead[];
 }
 
