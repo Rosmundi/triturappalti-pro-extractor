@@ -502,6 +502,18 @@ export default function ProcessedTenders() {
                             className="cursor-pointer"
                             title="Seleziona tutti i lead di questo PDF"
                           />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              exportToExcel(upload);
+                            }}
+                            className="text-green-700 hover:text-green-800 hover:bg-green-100 print:hidden"
+                            title="Esporta appalto in Excel"
+                          >
+                            <FileSpreadsheet className="h-4 w-4" />
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
