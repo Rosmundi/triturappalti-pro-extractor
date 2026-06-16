@@ -343,9 +343,18 @@ export default function ProcessedTenders() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 py-16">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-4xl font-bold mb-8">Appalti elaborati</h1>
+      <main className="w-full px-6 py-10 print:px-2 print:py-2">
+        <div className="w-full max-w-none mx-auto print:max-w-none">
+          <div className="flex items-center justify-between mb-8 print:mb-4">
+            <h1 className="text-4xl font-bold print:text-2xl">Appalti elaborati</h1>
+            <Button
+              variant="outline"
+              onClick={() => window.print()}
+              className="print:hidden"
+            >
+              Stampa
+            </Button>
+          </div>
           
           {uploads.length === 0 ? (
             <Card>
