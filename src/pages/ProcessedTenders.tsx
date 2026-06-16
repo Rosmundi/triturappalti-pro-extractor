@@ -70,6 +70,18 @@ interface Lead {
   phase: string | null;
   cup: string | null;
   notes: string | null;
+  note: string | null;
+  note_appalto: string | null;
+  nome_appalto: string | null;
+  categoria_progetto: string | null;
+  tipo_intervento: string | null;
+  committente_tipo: string | null;
+  categorie_og: string | null;
+  procedura_gara: string | null;
+  finanziamento: string | null;
+  data_appalto: string | null;
+  data_fine_lavori: string | null;
+  termine_offerta: string | null;
 }
 
 interface Tender {
@@ -80,6 +92,15 @@ interface Tender {
   phase: string | null;
   cup: string | null;
   appalto_location: string | null;
+  nome_appalto: string | null;
+  categorie_og: string | null;
+  tipo_intervento: string | null;
+  committente_tipo: string | null;
+  procedura_gara: string | null;
+  finanziamento: string | null;
+  data_appalto: string | null;
+  data_fine_lavori: string | null;
+  termine_offerta: string | null;
   leads: Lead[];
 }
 
@@ -183,6 +204,15 @@ export default function ProcessedTenders() {
                 phase: lead.phase,
                 cup: lead.cup,
                 appalto_location: lead.appalto_location,
+                nome_appalto: lead.nome_appalto ?? null,
+                categorie_og: lead.categorie_og ?? null,
+                tipo_intervento: lead.tipo_intervento ?? null,
+                committente_tipo: lead.committente_tipo ?? null,
+                procedura_gara: lead.procedura_gara ?? null,
+                finanziamento: lead.finanziamento ?? null,
+                data_appalto: lead.data_appalto ?? null,
+                data_fine_lavori: lead.data_fine_lavori ?? null,
+                termine_offerta: lead.termine_offerta ?? null,
                 leads: []
               });
             }
@@ -268,6 +298,55 @@ export default function ProcessedTenders() {
         tenders: u.tenders.map(t => ({
           ...t,
           leads: t.leads.map(l => l.id === leadId ? { ...l, notes: value } : l),
+        })),
+      };
+    }));
+  };
+
+  const updateLeadField = async (
+    leadId: string,
+    field: 'note' | 'note_appalto' | 'notes',
+    value: string
+  ) => {
+    setSavingNoteId(leadId + ':' + field);
+    try {
+      const patch =
+        field === 'note'
+          ? { note: value }
+          : field === 'note_appalto'
+          ? { note_appalto: value }
+          : { notes: value };
+      const { error } = await supabase
+        .from('leads')
+        .update(patch)
+        .eq('id', leadId);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Errore salvataggio nota:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare la nota",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingNoteId(null);
+    }
+  };
+
+  const handleLeadFieldChange = (
+    uploadId: string,
+    leadId: string,
+    field: 'note' | 'note_appalto',
+    value: string
+  ) => {
+    setUploads(prev => prev.map(u => {
+      if (u.id !== uploadId) return u;
+      return {
+        ...u,
+        leads: u.leads.map(l => l.id === leadId ? { ...l, [field]: value } : l),
+        tenders: u.tenders.map(t => ({
+          ...t,
+          leads: t.leads.map(l => l.id === leadId ? { ...l, [field]: value } : l),
         })),
       };
     }));
@@ -456,6 +535,19 @@ export default function ProcessedTenders() {
           // Lead info (Level 3)
           ...lead,
           notes: lead.notes ?? "",
+          // New fields (tender + lead extras + manual notes)
+          nome_appalto: lead.nome_appalto ?? tender?.nome_appalto ?? "",
+          categoria_progetto: lead.categoria_progetto ?? "",
+          tipo_intervento: lead.tipo_intervento ?? tender?.tipo_intervento ?? "",
+          committente_tipo: lead.committente_tipo ?? tender?.committente_tipo ?? "",
+          categorie_og: lead.categorie_og ?? tender?.categorie_og ?? "",
+          procedura_gara: lead.procedura_gara ?? tender?.procedura_gara ?? "",
+          finanziamento: lead.finanziamento ?? tender?.finanziamento ?? "",
+          data_appalto: lead.data_appalto ?? tender?.data_appalto ?? "",
+          data_fine_lavori: lead.data_fine_lavori ?? tender?.data_fine_lavori ?? "",
+          termine_offerta: lead.termine_offerta ?? tender?.termine_offerta ?? "",
+          note: lead.note ?? "",
+          note_appalto: lead.note_appalto ?? "",
         };
       });
 
@@ -643,7 +735,10 @@ export default function ProcessedTenders() {
                                       <div className="flex items-center gap-3 flex-1">
                                         <Briefcase className="h-4 w-4 text-primary" />
                                         <div className="space-y-1">
-                                          <div className="font-semibold">{tender.descrizione_appalto || 'Appalto senza descrizione'}</div>
+                                          <div className="font-semibold">{tender.nome_appalto || tender.descrizione_appalto || 'Appalto senza nome'}</div>
+                                          {tender.descrizione_appalto && tender.nome_appalto && (
+                                            <div className="text-xs text-muted-foreground">{tender.descrizione_appalto}</div>
+                                          )}
                                           <div className="text-xs text-muted-foreground space-x-3">
                                             {tender.cig_appalto && <span><strong>CIG:</strong> {tender.cig_appalto}</span>}
                                             {tender.value_eur && <span><strong>Valore:</strong> €{parseInt(tender.value_eur).toLocaleString()}</span>}
@@ -677,6 +772,22 @@ export default function ProcessedTenders() {
                                   {/* Level 3: Leads */}
                                   {isTenderExpanded && (
                                     <CardContent className="pt-4">
+                                      {/* Dettagli appalto */}
+                                      {(tender.categorie_og || tender.tipo_intervento || tender.committente_tipo || tender.procedura_gara || tender.finanziamento || tender.data_appalto || tender.data_fine_lavori || tender.termine_offerta) && (
+                                        <div className="mb-4 rounded-md border bg-muted/40 p-3">
+                                          <div className="text-sm font-semibold mb-2">Dettagli appalto</div>
+                                          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+                                            {tender.categorie_og && (<div><span className="text-muted-foreground">Categorie OG:</span> <strong>{tender.categorie_og}</strong></div>)}
+                                            {tender.tipo_intervento && (<div><span className="text-muted-foreground">Tipo intervento:</span> <strong>{tender.tipo_intervento}</strong></div>)}
+                                            {tender.committente_tipo && (<div><span className="text-muted-foreground">Committente:</span> <strong>{tender.committente_tipo}</strong></div>)}
+                                            {tender.procedura_gara && (<div><span className="text-muted-foreground">Procedura gara:</span> <strong>{tender.procedura_gara}</strong></div>)}
+                                            {tender.finanziamento && (<div><span className="text-muted-foreground">Finanziamento:</span> <strong>{tender.finanziamento}</strong></div>)}
+                                            {tender.data_appalto && (<div><span className="text-muted-foreground">Appalto:</span> <strong>{tender.data_appalto}</strong></div>)}
+                                            {tender.data_fine_lavori && (<div><span className="text-muted-foreground">Fine lavori:</span> <strong>{tender.data_fine_lavori}</strong></div>)}
+                                            {tender.termine_offerta && (<div><span className="text-muted-foreground">Termine offerta:</span> <strong>{tender.termine_offerta}</strong></div>)}
+                                          </div>
+                                        </div>
+                                      )}
                                       <div className="overflow-x-auto">
                                         <Table className="text-xs [&_th]:px-2 [&_th]:h-9 [&_td]:p-2 table-fixed">
                                           <colgroup>
@@ -741,36 +852,58 @@ export default function ProcessedTenders() {
                                                   </span>
                                                 </TableCell>
                                                 <TableCell>
-                                                  <textarea
-                                                    value={lead.notes || ''}
-                                                    onChange={(e) =>
-                                                      handleNoteChange(upload.id, lead.id, e.target.value)
-                                                    }
-                                                    placeholder="Aggiungi nota..."
-                                                    rows={4}
-                                                    className="w-full min-h-[90px] text-sm p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:border-0 print:p-0 print:bg-transparent"
-                                                    disabled={savingNoteId === lead.id}
-                                                  />
-                                                  <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => updateLeadNotes(lead.id, lead.notes || '')}
-                                                    disabled={savingNoteId === lead.id}
-                                                    className="mt-1 h-7 w-full gap-1 print:hidden"
-                                                  >
-                                                    {savingNoteId === lead.id ? (
-                                                      <>
-                                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                                        Salvataggio...
-                                                      </>
-                                                    ) : (
-                                                      <>
-                                                        <Save className="h-3 w-3" />
-                                                        Salva nota
-                                                      </>
-                                                    )}
-                                                  </Button>
+                                                  <div className="space-y-2">
+                                                    <div>
+                                                      <div className="text-[10px] font-semibold text-muted-foreground mb-1 print:hidden">Nota contatto</div>
+                                                      <textarea
+                                                        value={lead.note || ''}
+                                                        onChange={(e) => handleLeadFieldChange(upload.id, lead.id, 'note', e.target.value)}
+                                                        placeholder="Nota sul contatto/lead..."
+                                                        rows={3}
+                                                        className="w-full min-h-[70px] text-sm p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:border-0 print:p-0 print:bg-transparent"
+                                                        disabled={savingNoteId === lead.id + ':note'}
+                                                      />
+                                                      <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => updateLeadField(lead.id, 'note', lead.note || '')}
+                                                        disabled={savingNoteId === lead.id + ':note'}
+                                                        className="mt-1 h-7 w-full gap-1 print:hidden"
+                                                      >
+                                                        {savingNoteId === lead.id + ':note' ? (
+                                                          <><Loader2 className="h-3 w-3 animate-spin" />Salvataggio...</>
+                                                        ) : (
+                                                          <><Save className="h-3 w-3" />Salva nota contatto</>
+                                                        )}
+                                                      </Button>
+                                                    </div>
+                                                    <div>
+                                                      <div className="text-[10px] font-semibold text-muted-foreground mb-1 print:hidden">Nota appalto</div>
+                                                      <textarea
+                                                        value={lead.note_appalto || ''}
+                                                        onChange={(e) => handleLeadFieldChange(upload.id, lead.id, 'note_appalto', e.target.value)}
+                                                        placeholder="Nota sull'appalto..."
+                                                        rows={3}
+                                                        className="w-full min-h-[70px] text-sm p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:border-0 print:p-0 print:bg-transparent"
+                                                        disabled={savingNoteId === lead.id + ':note_appalto'}
+                                                      />
+                                                      <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => updateLeadField(lead.id, 'note_appalto', lead.note_appalto || '')}
+                                                        disabled={savingNoteId === lead.id + ':note_appalto'}
+                                                        className="mt-1 h-7 w-full gap-1 print:hidden"
+                                                      >
+                                                        {savingNoteId === lead.id + ':note_appalto' ? (
+                                                          <><Loader2 className="h-3 w-3 animate-spin" />Salvataggio...</>
+                                                        ) : (
+                                                          <><Save className="h-3 w-3" />Salva nota appalto</>
+                                                        )}
+                                                      </Button>
+                                                    </div>
+                                                  </div>
                                                 </TableCell>
                                               </TableRow>
                                             ))}

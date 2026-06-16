@@ -100,6 +100,16 @@ serve(async (req) => {
       value_eur: lead.value_eur || null,
       phase: lead.phase || null,
       cup: lead.cup || null,
+      nome_appalto: lead.nome_appalto || null,
+      categoria_progetto: lead.categoria_progetto || null,
+      tipo_intervento: lead.tipo_intervento || null,
+      committente_tipo: lead.committente_tipo || null,
+      categorie_og: lead.categorie_og || null,
+      procedura_gara: lead.procedura_gara || null,
+      finanziamento: lead.finanziamento || null,
+      data_appalto: lead.data_appalto || null,
+      data_fine_lavori: lead.data_fine_lavori || null,
+      termine_offerta: lead.termine_offerta || null,
     }));
 
     const { error: leadsError } = await supabase.from('leads').insert(leadsToInsert);
