@@ -698,7 +698,7 @@ export default function ProcessedTenders() {
                                                   )}
                                                   <span
                                                     onMouseDown={(e) => startResize(c.key, e)}
-                                                    className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40 active:bg-primary/60 print:hidden"
+                                                    className="absolute top-1 right-0 h-[calc(100%-0.5rem)] w-1 cursor-col-resize bg-border hover:bg-primary hover:w-1.5 active:bg-primary active:w-1.5 transition-all print:hidden"
                                                     title="Trascina per ridimensionare"
                                                   />
                                                 </TableHead>
