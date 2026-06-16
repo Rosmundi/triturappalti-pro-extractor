@@ -303,6 +303,49 @@ export default function ProcessedTenders() {
     }));
   };
 
+  const updateLeadField = async (
+    leadId: string,
+    field: 'note' | 'note_appalto' | 'notes',
+    value: string
+  ) => {
+    setSavingNoteId(leadId + ':' + field);
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ [field]: value })
+        .eq('id', leadId);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Errore salvataggio nota:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare la nota",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingNoteId(null);
+    }
+  };
+
+  const handleLeadFieldChange = (
+    uploadId: string,
+    leadId: string,
+    field: 'note' | 'note_appalto',
+    value: string
+  ) => {
+    setUploads(prev => prev.map(u => {
+      if (u.id !== uploadId) return u;
+      return {
+        ...u,
+        leads: u.leads.map(l => l.id === leadId ? { ...l, [field]: value } : l),
+        tenders: u.tenders.map(t => ({
+          ...t,
+          leads: t.leads.map(l => l.id === leadId ? { ...l, [field]: value } : l),
+        })),
+      };
+    }));
+  };
+
   const toggleSelectAllTender = (uploadId: string, tender: Tender) => {
     setSelectedLeads(prev => {
       const uploadSelections = new Set(prev[uploadId] || []);
