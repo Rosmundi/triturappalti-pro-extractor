@@ -310,9 +310,15 @@ export default function ProcessedTenders() {
   ) => {
     setSavingNoteId(leadId + ':' + field);
     try {
+      const patch =
+        field === 'note'
+          ? { note: value }
+          : field === 'note_appalto'
+          ? { note_appalto: value }
+          : { notes: value };
       const { error } = await supabase
         .from('leads')
-        .update({ [field]: value })
+        .update(patch)
         .eq('id', leadId);
       if (error) throw error;
     } catch (error) {
