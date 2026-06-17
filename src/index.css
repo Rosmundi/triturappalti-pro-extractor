@@ -152,3 +152,90 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Semantic status tokens (light) */
+@layer base {
+  :root {
+    --success: 142 71% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+    --processing: 271 81% 56%;
+    --processing-foreground: 0 0% 100%;
+  }
+  .dark {
+    --success: 142 65% 45%;
+    --warning: 38 92% 55%;
+    --info: 199 89% 55%;
+    --processing: 271 81% 65%;
+  }
+}
+
+/* Excel-like grid styles */
+.xls-grid {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Calibri, Arial, sans-serif;
+  width: max-content;
+}
+.xls-grid th, .xls-grid td {
+  border-right: 1px solid hsl(var(--border));
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 4px 8px;
+  background: hsl(var(--card));
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+.xls-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: hsl(var(--muted));
+  font-weight: 600;
+  text-align: left;
+  user-select: none;
+}
+.xls-grid .xls-col-letters th {
+  font-size: 10px;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--secondary));
+  padding: 1px 4px;
+  font-weight: 500;
+}
+.xls-grid .xls-row-num {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+  width: 44px;
+  font-size: 10px;
+  font-weight: 500;
+  user-select: none;
+}
+.xls-grid thead .xls-row-num { z-index: 4; }
+.xls-grid tbody tr:nth-child(even) td { background: hsl(var(--muted) / 0.35); }
+.xls-grid tbody tr:nth-child(even) td.xls-row-num { background: hsl(var(--muted)); }
+.xls-grid td.xls-selected {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: -2px;
+  background: hsl(var(--primary) / 0.08) !important;
+}
+.xls-grid td.xls-editing { padding: 0; }
+.xls-grid td.xls-editing input {
+  width: 100%; height: 100%; padding: 4px 8px;
+  border: 0; outline: 2px solid hsl(var(--primary));
+  background: hsl(var(--background)); color: hsl(var(--foreground));
+  font: inherit;
+}
+.xls-grid.density-compact th, .xls-grid.density-compact td { padding: 2px 6px; font-size: 11px; }
+.xls-grid.density-comfortable th, .xls-grid.density-comfortable td { padding: 8px 12px; font-size: 13px; }
+.xls-wrap { overflow: auto; max-height: calc(100vh - 280px); border: 1px solid hsl(var(--border)); border-radius: 6px; }
