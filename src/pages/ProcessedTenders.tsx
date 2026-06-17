@@ -684,34 +684,73 @@ export default function ProcessedTenders() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container mx-auto px-4 py-16">
-          <div className="flex justify-center items-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        </main>
+      <div className="p-6">
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
       </div>
     );
   }
 
+  const flatLeads = uploads.flatMap((u) =>
+    u.leads.map((l) => ({ ...l, filename: u.filename }))
+  );
+  const viewMode = (typeof window !== "undefined" && (localStorage.getItem("appalti.viewMode") as "hier" | "excel")) || "hier";
+
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main className="w-full px-6 py-10 print:px-2 print:py-2">
+    <div className="w-full">
+      <main className="w-full px-6 py-6 print:px-2 print:py-2">
         <div className="w-full max-w-none mx-auto print:max-w-none">
-          <div className="flex items-center justify-between mb-8 print:mb-4">
-            <h1 className="text-4xl font-bold print:text-2xl">Appalti elaborati</h1>
-            <Button
-              variant="outline"
-              onClick={() => window.print()}
-              className="print:hidden"
-            >
-              Stampa
-            </Button>
+          <div className="flex items-center justify-between mb-6 print:mb-4 gap-3 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold print:text-2xl">Appalti elaborati</h1>
+              <p className="text-sm text-muted-foreground">{uploads.length} file · {flatLeads.length} lead totali</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center rounded-md border p-0.5">
+                <button
+                  onClick={() => { localStorage.setItem("appalti.viewMode", "hier"); location.reload(); }}
+                  className={`flex items-center gap-1 px-2 py-1 text-xs rounded ${viewMode === "hier" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                  title="Vista gerarchica con dettagli e note"
+                >
+                  <LayoutGrid className="h-3 w-3" /> Gerarchica
+                </button>
+                <button
+                  onClick={() => { localStorage.setItem("appalti.viewMode", "excel"); location.reload(); }}
+                  className={`flex items-center gap-1 px-2 py-1 text-xs rounded ${viewMode === "excel" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                  title="Vista foglio Excel editabile"
+                >
+                  <Sheet className="h-3 w-3" /> Foglio Excel
+                </button>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => window.print()} className="print:hidden">
+                Stampa
+              </Button>
+            </div>
           </div>
-          
-          {uploads.length === 0 ? (
+
+          {viewMode === "excel" ? (
+            <Card>
+              <CardContent className="p-4">
+                <LeadsExcelGrid
+                  rows={flatLeads as any}
+                  columns={EXCEL_COLUMNS as any}
+                  table="leads"
+                  storageKey="appalti.excel"
+                  onRowChange={(id, patch) => {
+                    setUploads((prev) => prev.map((u) => ({
+                      ...u,
+                      leads: u.leads.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+                      tenders: u.tenders.map((t) => ({
+                        ...t,
+                        leads: t.leads.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+                      })),
+                    })));
+                  }}
+                />
+              </CardContent>
+            </Card>
+          ) : uploads.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <p className="text-muted-foreground">Nessun appalto elaborato ancora</p>
