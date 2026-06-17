@@ -338,7 +338,7 @@ export default function ProcessedTenders() {
 
   const getLeadVisibleNote = (lead: Pick<Lead, 'note' | 'notes'>) => lead.note || lead.notes || null;
 
-  const applyProjectFilter = (query: ReturnType<typeof supabase.from<'leads'>> extends never ? never : any, projectId: string) => {
+  const applyProjectFilter = (query: any, projectId: string) => {
     return projectId === 'unknown' ? query.is('project_id', null) : query.eq('project_id', projectId);
   };
 
