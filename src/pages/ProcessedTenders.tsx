@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronDown, ChevronRight, Send, Loader2, Trash2, FileText, Briefcase, Users, AlertTriangle, Save } from "lucide-react";
+import { ChevronDown, ChevronRight, Send, Loader2, Trash2, FileText, Briefcase, Users, AlertTriangle, Save, Clock } from "lucide-react";
 import { FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -118,6 +118,7 @@ export default function ProcessedTenders() {
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [expandedUploadId, setExpandedUploadId] = useState<string | null>(null);
   const [expandedTenders, setExpandedTenders] = useState<Record<string, Set<string>>>({});
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [sendingToCRM, setSendingToCRM] = useState<string | null>(null);
   const [selectedLeads, setSelectedLeads] = useState<Record<string, Set<string>>>({});
@@ -170,10 +171,22 @@ export default function ProcessedTenders() {
 
   useEffect(() => {
     fetchUploads();
+    // Realtime: ricarica quando arrivano/cambiano lead o uploads
+    const channel = supabase
+      .channel('processed-tenders-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => fetchUploads(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'uploads' }, () => fetchUploads(true))
+      .subscribe();
+    // Polling di sicurezza ogni 5s (estrazione asincrona ~60-90s)
+    const interval = setInterval(() => fetchUploads(true), 5000);
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, []);
 
-  const fetchUploads = async () => {
-    setIsLoading(true);
+  const fetchUploads = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const { data: uploadsData, error: uploadsError } = await supabase
         .from('uploads')
@@ -225,7 +238,7 @@ export default function ProcessedTenders() {
           return {
             ...upload,
             leads: leadsData || [],
-            tenders: Array.from(tenderMap.values())
+            tenders: Array.from(tenderMap.values()),
           };
         })
       );
@@ -233,13 +246,15 @@ export default function ProcessedTenders() {
       setUploads(uploadsWithTenders);
     } catch (error) {
       console.error('Errore caricamento appalti:', error);
-      toast({
-        title: "Errore",
-        description: "Impossibile caricare gli appalti elaborati",
-        variant: "destructive",
-      });
+      if (!silent) {
+        toast({
+          title: "Errore",
+          description: "Impossibile caricare gli appalti elaborati",
+          variant: "destructive",
+        });
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -658,8 +673,11 @@ export default function ProcessedTenders() {
           ) : (
             <div className="space-y-4">
               {uploads.map((upload) => {
-                const totalTenders = upload.tenders.length;
-                const totalLeads = upload.leads.length;
+                const safeTenders = upload.tenders ?? [];
+                const safeLeads = upload.leads ?? [];
+                const totalTenders = safeTenders.length;
+                const totalLeads = safeLeads.length;
+                const isProcessing = totalLeads === 0;
                 
                 return (
                   <Card key={upload.id}>
@@ -677,16 +695,22 @@ export default function ProcessedTenders() {
                               <span><strong>Data:</strong> {new Date(upload.uploaded_at).toLocaleDateString('it-IT')}</span>
                               <span><strong>Appalti:</strong> {totalTenders}</span>
                               <span><strong>Lead:</strong> {totalLeads}</span>
+                              {isProcessing && (
+                                <span className="inline-flex items-center gap-1 text-amber-700">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  In elaborazione…
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <input
                             type="checkbox"
-                            checked={upload.leads.every(l => selectedLeads[upload.id]?.has(l.id))}
+                            checked={safeLeads.length > 0 && safeLeads.every(l => selectedLeads[upload.id]?.has(l.id))}
                             onChange={(e) => {
                               e.stopPropagation();
-                              toggleSelectAllPdf(upload.id, upload.leads);
+                              toggleSelectAllPdf(upload.id, safeLeads);
                             }}
                             onClick={(e) => e.stopPropagation()}
                             className="cursor-pointer"
@@ -749,17 +773,29 @@ export default function ProcessedTenders() {
                     {/* Level 2: Tenders */}
                     {expandedUploadId === upload.id && (
                       <CardContent className="space-y-3">
-                        {upload.tenders.length === 0 ? (
-                          <p className="text-muted-foreground text-center py-4">Nessun appalto trovato</p>
+                        {safeTenders.length === 0 ? (
+                          <div className="flex items-center justify-center gap-2 text-muted-foreground py-6">
+                            {isProcessing ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Estrazione in corso… (ricaricamento automatico)</span>
+                              </>
+                            ) : (
+                              <span>Nessun appalto trovato</span>
+                            )}
+                          </div>
                         ) : (
                           <>
-                            {upload.tenders.map((tender) => {
+                            {safeTenders.map((tender) => {
                               const isTenderExpanded = expandedTenders[upload.id]?.has(tender.project_id);
-                              const tenderLeadIds = tender.leads.map(l => l.id);
+                              const tenderLeads = tender.leads ?? [];
+                              const tenderLeadIds = tenderLeads.map(l => l.id);
                               const selectedCount = tenderLeadIds.filter(id => 
                                 selectedLeads[upload.id]?.has(id)
                               ).length;
-                              const allTenderSelected = selectedCount === tender.leads.length && tender.leads.length > 0;
+                              const allTenderSelected = selectedCount === tenderLeads.length && tenderLeads.length > 0;
+                              const descKey = upload.id + ':' + tender.project_id;
+                              const isDescExpanded = expandedDescriptions.has(descKey);
                               
                               return (
                                 <Card key={tender.project_id} className="bg-muted/30">
@@ -771,16 +807,14 @@ export default function ProcessedTenders() {
                                       <div className="flex items-center gap-3 flex-1">
                                         <Briefcase className="h-4 w-4 text-primary" />
                                         <div className="space-y-1">
-                                          <div className="font-semibold">{tender.nome_appalto || tender.descrizione_appalto || 'Appalto senza nome'}</div>
-                                          {tender.descrizione_appalto && tender.nome_appalto && (
-                                            <div className="text-xs text-muted-foreground">{tender.descrizione_appalto}</div>
-                                          )}
+                                          <div className="text-lg font-semibold leading-tight">{tender.nome_appalto || tender.descrizione_appalto || 'Appalto senza nome'}</div>
                                           <div className="text-xs text-muted-foreground space-x-3">
-                                            {tender.cig_appalto && <span><strong>CIG:</strong> {tender.cig_appalto}</span>}
+                                            {tender.appalto_location && <span><strong>Località:</strong> {tender.appalto_location}</span>}
                                             {tender.value_eur && <span><strong>Valore:</strong> €{parseInt(tender.value_eur).toLocaleString()}</span>}
                                             {tender.phase && <span><strong>Fase:</strong> {tender.phase}</span>}
-                                            {tender.appalto_location && <span><strong>Località:</strong> {tender.appalto_location}</span>}
-                                            <span><strong>Lead:</strong> {tender.leads.length}</span>
+                                            {tender.tipo_intervento && <span><strong>Intervento:</strong> {tender.tipo_intervento}</span>}
+                                            {tender.committente_tipo && <span><strong>Committente:</strong> {tender.committente_tipo}</span>}
+                                            <span><strong>Contatti:</strong> {tenderLeads.length}</span>
                                           </div>
                                         </div>
                                       </div>
@@ -811,16 +845,52 @@ export default function ProcessedTenders() {
                                        {/* Dettagli appalto */}
                                        <div className="mb-4 rounded-md border bg-muted/40 p-3">
                                          <div className="text-sm font-semibold mb-2">Dettagli appalto</div>
-                                         {(tender.categorie_og || tender.tipo_intervento || tender.committente_tipo || tender.procedura_gara || tender.finanziamento || tender.data_appalto || tender.data_fine_lavori || tender.termine_offerta) && (
-                                           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs mb-3">
-                                            {tender.categorie_og && (<div><span className="text-muted-foreground">Categorie OG:</span> <strong>{tender.categorie_og}</strong></div>)}
-                                            {tender.tipo_intervento && (<div><span className="text-muted-foreground">Tipo intervento:</span> <strong>{tender.tipo_intervento}</strong></div>)}
-                                            {tender.committente_tipo && (<div><span className="text-muted-foreground">Committente:</span> <strong>{tender.committente_tipo}</strong></div>)}
-                                            {tender.procedura_gara && (<div><span className="text-muted-foreground">Procedura gara:</span> <strong>{tender.procedura_gara}</strong></div>)}
-                                            {tender.finanziamento && (<div><span className="text-muted-foreground">Finanziamento:</span> <strong>{tender.finanziamento}</strong></div>)}
-                                            {tender.data_appalto && (<div><span className="text-muted-foreground">Appalto:</span> <strong>{tender.data_appalto}</strong></div>)}
-                                            {tender.data_fine_lavori && (<div><span className="text-muted-foreground">Fine lavori:</span> <strong>{tender.data_fine_lavori}</strong></div>)}
-                                            {tender.termine_offerta && (<div><span className="text-muted-foreground">Termine offerta:</span> <strong>{tender.termine_offerta}</strong></div>)}
+                                         {(() => {
+                                           const cat_progetto = tenderLeads.find(l => l.categoria_progetto)?.categoria_progetto || null;
+                                           const fields: Array<[string, string | null]> = [
+                                             ['Categoria progetto', cat_progetto],
+                                             ['Categorie OG', tender.categorie_og],
+                                             ['CIG', tender.cig_appalto],
+                                             ['CUP', tender.cup],
+                                             ['Procedura', tender.procedura_gara],
+                                             ['Finanziamento', tender.finanziamento],
+                                             ['Appalto', tender.data_appalto],
+                                             ['Fine lavori', tender.data_fine_lavori],
+                                             ['Termine offerta', tender.termine_offerta],
+                                             ['ID progetto', tender.project_id !== 'unknown' ? tender.project_id : null],
+                                           ];
+                                           const visible = fields.filter(([, v]) => v && String(v).trim() !== '');
+                                           if (visible.length === 0) return null;
+                                           return (
+                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs mb-3">
+                                               {visible.map(([label, value]) => (
+                                                 <div key={label}><span className="text-muted-foreground">{label}:</span> <strong className="break-all">{value}</strong></div>
+                                               ))}
+                                             </div>
+                                           );
+                                         })()}
+                                         {tender.descrizione_appalto && (
+                                           <div className="mb-3">
+                                             <div className="text-xs font-semibold text-muted-foreground mb-1">Descrizione</div>
+                                             <div className={"text-sm whitespace-pre-wrap " + (isDescExpanded ? "" : "line-clamp-3")}>
+                                               {tender.descrizione_appalto}
+                                             </div>
+                                             {tender.descrizione_appalto.length > 180 && (
+                                               <button
+                                                 type="button"
+                                                 onClick={() => {
+                                                   setExpandedDescriptions(prev => {
+                                                     const next = new Set(prev);
+                                                     if (next.has(descKey)) next.delete(descKey);
+                                                     else next.add(descKey);
+                                                     return next;
+                                                   });
+                                                 }}
+                                                 className="text-xs text-primary hover:underline mt-1 print:hidden"
+                                               >
+                                                 {isDescExpanded ? 'Mostra meno' : 'Mostra tutto'}
+                                               </button>
+                                             )}
                                            </div>
                                          )}
                                          <div>
@@ -878,7 +948,7 @@ export default function ProcessedTenders() {
                                             </TableRow>
                                           </TableHeader>
                                           <TableBody>
-                                            {tender.leads.map((lead) => (
+                                             {tenderLeads.map((lead) => (
                                               <TableRow key={lead.id}>
                                                 <TableCell>
                                                   <input
