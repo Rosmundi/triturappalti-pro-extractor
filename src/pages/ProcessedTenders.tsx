@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronDown, ChevronRight, Send, Loader2, Trash2, FileText, Briefcase, Users, AlertTriangle, Save } from "lucide-react";
+import { ChevronDown, ChevronRight, Send, Loader2, Trash2, FileText, Briefcase, Users, AlertTriangle, Save, Clock } from "lucide-react";
 import { FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -118,6 +118,7 @@ export default function ProcessedTenders() {
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [expandedUploadId, setExpandedUploadId] = useState<string | null>(null);
   const [expandedTenders, setExpandedTenders] = useState<Record<string, Set<string>>>({});
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [sendingToCRM, setSendingToCRM] = useState<string | null>(null);
   const [selectedLeads, setSelectedLeads] = useState<Record<string, Set<string>>>({});
@@ -170,10 +171,22 @@ export default function ProcessedTenders() {
 
   useEffect(() => {
     fetchUploads();
+    // Realtime: ricarica quando arrivano/cambiano lead o uploads
+    const channel = supabase
+      .channel('processed-tenders-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => fetchUploads(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'uploads' }, () => fetchUploads(true))
+      .subscribe();
+    // Polling di sicurezza ogni 5s (estrazione asincrona ~60-90s)
+    const interval = setInterval(() => fetchUploads(true), 5000);
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, []);
 
-  const fetchUploads = async () => {
-    setIsLoading(true);
+  const fetchUploads = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const { data: uploadsData, error: uploadsError } = await supabase
         .from('uploads')
@@ -225,7 +238,7 @@ export default function ProcessedTenders() {
           return {
             ...upload,
             leads: leadsData || [],
-            tenders: Array.from(tenderMap.values())
+            tenders: Array.from(tenderMap.values()),
           };
         })
       );
@@ -233,13 +246,15 @@ export default function ProcessedTenders() {
       setUploads(uploadsWithTenders);
     } catch (error) {
       console.error('Errore caricamento appalti:', error);
-      toast({
-        title: "Errore",
-        description: "Impossibile caricare gli appalti elaborati",
-        variant: "destructive",
-      });
+      if (!silent) {
+        toast({
+          title: "Errore",
+          description: "Impossibile caricare gli appalti elaborati",
+          variant: "destructive",
+        });
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
