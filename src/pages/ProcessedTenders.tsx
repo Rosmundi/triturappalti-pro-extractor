@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { Header } from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronDown, ChevronRight, Send, Loader2, Trash2, FileText, Briefcase, Users, AlertTriangle, Save, Clock } from "lucide-react";
+import { ChevronDown, ChevronRight, Send, Loader2, Trash2, FileText, Briefcase, Users, AlertTriangle, Save, Clock, LayoutGrid, Sheet } from "lucide-react";
 import { FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -27,6 +26,29 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { WEBHOOKS } from "@/config/webhooks";
+import { LeadsExcelGrid, type ExcelColumn } from "@/components/appalti/LeadsExcelGrid";
+
+const EXCEL_COLUMNS: ExcelColumn<any>[] = [
+  { key: "filename", label: "File", width: 200, editable: false },
+  { key: "nome_appalto", label: "Nome appalto", width: 220 },
+  { key: "cig_appalto", label: "CIG", width: 110 },
+  { key: "cup", label: "CUP", width: 110 },
+  { key: "lead_company", label: "Azienda", width: 200 },
+  { key: "lead_surname", label: "Referente", width: 140 },
+  { key: "lead_email", label: "Email", width: 200 },
+  { key: "lead_number", label: "Telefono", width: 130 },
+  { key: "lead_category", label: "Categoria", width: 120 },
+  { key: "entity_role", label: "Ruolo", width: 140 },
+  { key: "quality_status", label: "Qualità", width: 100 },
+  { key: "lead_city", label: "Città", width: 130 },
+  { key: "lead_province", label: "Prov.", width: 70 },
+  { key: "value_eur", label: "Valore €", width: 110, editable: false },
+  { key: "phase", label: "Fase", width: 110, editable: false },
+  { key: "website", label: "Web", width: 160 },
+  { key: "street", label: "Indirizzo", width: 200 },
+  { key: "cap", label: "CAP", width: 80 },
+  { key: "note", label: "Note", width: 260 },
+];
 
 const COLUMN_DEFS = [
   { key: "select", label: "", width: 36 },
