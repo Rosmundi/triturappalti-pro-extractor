@@ -232,8 +232,12 @@ export default function ProcessedTenders() {
                 leads: []
               });
             }
+            const existingTender = tenderMap.get(projectId)!;
+            if (!existingTender.note_appalto && lead.note_appalto) {
+              existingTender.note_appalto = lead.note_appalto;
+            }
             
-            tenderMap.get(projectId)!.leads.push(lead);
+            existingTender.leads.push(lead);
           });
 
           return {
@@ -332,26 +336,39 @@ export default function ProcessedTenders() {
     return base ? `${base}\n\n${stamped}` : stamped;
   };
 
+  const getLeadVisibleNote = (lead: Pick<Lead, 'note' | 'notes'>) => lead.note || lead.notes || null;
+
+  const applyProjectFilter = (query: ReturnType<typeof supabase.from<'leads'>> extends never ? never : any, projectId: string) => {
+    return projectId === 'unknown' ? query.is('project_id', null) : query.eq('project_id', projectId);
+  };
+
   const appendLeadNote = async (uploadId: string, leadId: string, currentNote: string | null) => {
     const draft = (leadNoteDrafts[leadId] || '').trim();
     if (!draft) {
       toast({ title: "Nota vuota", description: "Scrivi qualcosa prima di salvare", variant: "destructive" });
       return;
     }
-    const merged = appendDatedNote(currentNote, draft);
     setSavingNoteId(leadId + ':note');
     try {
-      const { error } = await supabase.from('leads').update({ note: merged }).eq('id', leadId);
+      const { data: savedLead, error: readError } = await supabase
+        .from('leads')
+        .select('note, notes')
+        .eq('id', leadId)
+        .single();
+      if (readError) throw readError;
+
+      const merged = appendDatedNote(savedLead?.note || savedLead?.notes || currentNote, draft);
+      const { error } = await supabase.from('leads').update({ note: merged, notes: merged }).eq('id', leadId);
       if (error) throw error;
       // Update local state
       setUploads(prev => prev.map(u => {
         if (u.id !== uploadId) return u;
         return {
           ...u,
-          leads: u.leads.map(l => l.id === leadId ? { ...l, note: merged } : l),
+          leads: u.leads.map(l => l.id === leadId ? { ...l, note: merged, notes: merged } : l),
           tenders: u.tenders.map(t => ({
             ...t,
-            leads: t.leads.map(l => l.id === leadId ? { ...l, note: merged } : l),
+            leads: t.leads.map(l => l.id === leadId ? { ...l, note: merged, notes: merged } : l),
           })),
         };
       }));
@@ -371,14 +388,24 @@ export default function ProcessedTenders() {
       toast({ title: "Nota vuota", description: "Scrivi qualcosa prima di salvare", variant: "destructive" });
       return;
     }
-    const merged = appendDatedNote(currentNote, draft);
     setSavingNoteId('tender:' + key);
     try {
-      const { error } = await supabase
+      let readQuery = supabase
+        .from('leads')
+        .select('note_appalto')
+        .eq('upload_id', uploadId);
+      readQuery = applyProjectFilter(readQuery, projectId);
+      const { data: savedTenderNotes, error: readError } = await readQuery;
+      if (readError) throw readError;
+
+      const savedCurrentNote = savedTenderNotes?.map(row => row.note_appalto).find(note => note && note.trim()) || currentNote;
+      const merged = appendDatedNote(savedCurrentNote, draft);
+      let updateQuery = supabase
         .from('leads')
         .update({ note_appalto: merged })
-        .eq('upload_id', uploadId)
-        .eq('project_id', projectId);
+        .eq('upload_id', uploadId);
+      updateQuery = applyProjectFilter(updateQuery, projectId);
+      const { error } = await updateQuery;
       if (error) throw error;
       setUploads(prev => prev.map(u => {
         if (u.id !== uploadId) return u;
