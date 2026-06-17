@@ -30,17 +30,16 @@ import { WEBHOOKS } from "@/config/webhooks";
 
 const COLUMN_DEFS = [
   { key: "select", label: "", width: 36 },
-  { key: "company", label: "Azienda", width: 160 },
-  { key: "surname", label: "Referente", width: 110 },
-  { key: "email", label: "Email", width: 180 },
-  { key: "phone", label: "Telefono", width: 110 },
+  { key: "company", label: "Azienda", width: 170 },
+  { key: "surname", label: "Referente", width: 130 },
+  { key: "email", label: "Email", width: 190 },
+  { key: "phone", label: "Telefono", width: 120 },
   { key: "category", label: "Categoria", width: 110 },
-  { key: "role", label: "Ruolo", width: 110 },
-  { key: "city", label: "Città", width: 100 },
-  { key: "province", label: "Prov.", width: 60 },
+  { key: "role", label: "Ruolo", width: 130 },
+  { key: "address", label: "Indirizzo", width: 220 },
   { key: "web", label: "Web", width: 60 },
   { key: "quality", label: "Qualità", width: 90 },
-  { key: "notes", label: "Note", width: 320 },
+  { key: "notes", label: "Note", width: 340 },
 ] as const;
 
 type ColKey = (typeof COLUMN_DEFS)[number]["key"];

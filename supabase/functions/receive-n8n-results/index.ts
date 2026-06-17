@@ -24,21 +24,37 @@ serve(async (req) => {
     console.log('Received callback body keys:', Object.keys(body));
 
     // Extract upload_id and leads from the callback
-    const uploadId = body.upload_id;
-    const filename = body.filename;
+    const uploadId = body.upload_id ?? body?.[0]?.upload_id;
+    const filename = body.filename ?? body?.[0]?.filename;
     
     if (!uploadId) {
       throw new Error('upload_id mancante nel callback');
     }
 
-    // Normalize the leads array from various possible formats
+    // Normalize the leads array from various possible n8n payload formats:
+    //   { upload_id, data: [ {lead}, ... ] }
+    //   { upload_id, leads: [ {lead}, ... ] }
+    //   [ {lead}, ... ]
+    //   [ { data: [ {lead}, ... ] } ]   <-- wrapped format
+    //   { data: [ [ {lead}, ... ] ] }   <-- nested arrays
     let leadsArray: any[] = [];
-    if (Array.isArray(body.data)) {
-      leadsArray = body.data;
-    } else if (Array.isArray(body.leads)) {
-      leadsArray = body.leads;
-    } else if (Array.isArray(body)) {
-      leadsArray = body;
+    const candidates: any[] = [];
+    if (Array.isArray(body)) candidates.push(body);
+    if (Array.isArray(body?.data)) candidates.push(body.data);
+    if (Array.isArray(body?.leads)) candidates.push(body.leads);
+    if (Array.isArray(body?.[0]?.data)) candidates.push(body[0].data);
+    if (Array.isArray(body?.[0]?.leads)) candidates.push(body[0].leads);
+
+    const flatten = (arr: any[]): any[] =>
+      arr.flatMap((item) => (Array.isArray(item) ? flatten(item) : [item]));
+
+    const isLead = (x: any) =>
+      x && typeof x === 'object' && !Array.isArray(x) &&
+      (x.lead_company || x.lead_surname || x.lead_email || x.project_id || x.nome_appalto);
+
+    for (const c of candidates) {
+      const flat = flatten(c).filter(isLead);
+      if (flat.length > 0) { leadsArray = flat; break; }
     }
 
     console.log(`Processing callback for upload ${uploadId} with ${leadsArray.length} leads`);
