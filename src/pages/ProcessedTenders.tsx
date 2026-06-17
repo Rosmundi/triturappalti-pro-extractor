@@ -967,8 +967,20 @@ export default function ProcessedTenders() {
                                                   </span>
                                                 </TableCell>
                                                 <TableCell className="break-words overflow-hidden">{lead.entity_role || '-'}</TableCell>
-                                                <TableCell className="break-words overflow-hidden">{lead.lead_city || '-'}</TableCell>
-                                                <TableCell className="break-words overflow-hidden">{lead.lead_province || '-'}</TableCell>
+                                                <TableCell className="break-words overflow-hidden text-xs leading-tight">
+                                                  {(() => {
+                                                    const line1 = lead.street || '';
+                                                    const cityBits = [lead.cap, lead.lead_city].filter(Boolean).join(' ');
+                                                    const line2 = [cityBits, lead.lead_province, lead.country].filter(Boolean).join(' · ');
+                                                    if (!line1 && !line2) return '-';
+                                                    return (
+                                                      <div className="space-y-0.5">
+                                                        {line1 && <div>{line1}</div>}
+                                                        {line2 && <div className="text-muted-foreground">{line2}</div>}
+                                                      </div>
+                                                    );
+                                                  })()}
+                                                </TableCell>
                                                 <TableCell className="overflow-hidden">
                                                   {lead.website ? (
                                                     <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
