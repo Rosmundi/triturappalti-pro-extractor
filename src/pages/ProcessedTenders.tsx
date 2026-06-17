@@ -123,6 +123,8 @@ export default function ProcessedTenders() {
   const [selectedLeads, setSelectedLeads] = useState<Record<string, Set<string>>>({});
   const [selectAllPdf, setSelectAllPdf] = useState<Record<string, boolean>>({});
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
+  const [leadNoteDrafts, setLeadNoteDrafts] = useState<Record<string, string>>({});
+  const [tenderNoteDrafts, setTenderNoteDrafts] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   const [colWidths, setColWidths] = useState<Record<ColKey, number>>(() => {
