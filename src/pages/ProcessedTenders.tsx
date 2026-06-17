@@ -364,56 +364,38 @@ export default function ProcessedTenders() {
     }
   };
 
-  const handleLeadFieldChange = (
-    uploadId: string,
-    leadId: string,
-    field: 'note',
-    value: string
-  ) => {
-    setUploads(prev => prev.map(u => {
-      if (u.id !== uploadId) return u;
-      return {
-        ...u,
-        leads: u.leads.map(l => l.id === leadId ? { ...l, [field]: value } : l),
-        tenders: u.tenders.map(t => ({
-          ...t,
-          leads: t.leads.map(l => l.id === leadId ? { ...l, [field]: value } : l),
-        })),
-      };
-    }));
-  };
-
-  const handleTenderNoteChange = (uploadId: string, projectId: string, value: string) => {
-    setUploads(prev => prev.map(u => {
-      if (u.id !== uploadId) return u;
-      return {
-        ...u,
-        leads: u.leads.map(l => l.project_id === projectId ? { ...l, note_appalto: value } : l),
-        tenders: u.tenders.map(t =>
-          t.project_id === projectId
-            ? { ...t, note_appalto: value, leads: t.leads.map(l => ({ ...l, note_appalto: value })) }
-            : t
-        ),
-      };
-    }));
-  };
-
-  const saveTenderNote = async (uploadId: string, projectId: string, value: string) => {
-    setSavingNoteId('tender:' + uploadId + ':' + projectId);
+  const appendTenderNote = async (uploadId: string, projectId: string, currentNote: string | null) => {
+    const key = uploadId + ':' + projectId;
+    const draft = (tenderNoteDrafts[key] || '').trim();
+    if (!draft) {
+      toast({ title: "Nota vuota", description: "Scrivi qualcosa prima di salvare", variant: "destructive" });
+      return;
+    }
+    const merged = appendDatedNote(currentNote, draft);
+    setSavingNoteId('tender:' + key);
     try {
       const { error } = await supabase
         .from('leads')
-        .update({ note_appalto: value })
+        .update({ note_appalto: merged })
         .eq('upload_id', uploadId)
         .eq('project_id', projectId);
       if (error) throw error;
+      setUploads(prev => prev.map(u => {
+        if (u.id !== uploadId) return u;
+        return {
+          ...u,
+          leads: u.leads.map(l => l.project_id === projectId ? { ...l, note_appalto: merged } : l),
+          tenders: u.tenders.map(t =>
+            t.project_id === projectId
+              ? { ...t, note_appalto: merged, leads: t.leads.map(l => ({ ...l, note_appalto: merged })) }
+              : t
+          ),
+        };
+      }));
+      setTenderNoteDrafts(prev => ({ ...prev, [key]: '' }));
     } catch (error) {
       console.error('Errore salvataggio nota appalto:', error);
-      toast({
-        title: "Errore",
-        description: "Impossibile salvare la nota appalto",
-        variant: "destructive",
-      });
+      toast({ title: "Errore", description: "Impossibile salvare la nota appalto", variant: "destructive" });
     } finally {
       setSavingNoteId(null);
     }
