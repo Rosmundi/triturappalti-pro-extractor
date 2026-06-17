@@ -536,7 +536,7 @@ export default function ProcessedTenders() {
           "Città": lead.lead_city || "",
           "Provincia": lead.lead_province || "",
           "Paese": lead.country || "",
-          "Note": lead.notes || "",
+          "Note": getLeadVisibleNote(lead) || "",
           "Lead ID": lead.id,
         };
       });
@@ -1030,9 +1030,9 @@ export default function ProcessedTenders() {
                                                   <div className="space-y-2">
                                                     <div>
                                                       <div className="text-[10px] font-semibold text-muted-foreground mb-1 print:hidden">Note contatto</div>
-                                                      {lead.note && lead.note.trim() ? (
+                                                      {getLeadVisibleNote(lead)?.trim() ? (
                                                         <div className="mb-1 text-xs whitespace-pre-wrap bg-muted/40 border border-border rounded p-1.5 max-h-32 overflow-y-auto leading-snug">
-                                                          {lead.note}
+                                                          {getLeadVisibleNote(lead)}
                                                         </div>
                                                       ) : (
                                                         <div className="mb-1 text-[11px] text-muted-foreground italic print:hidden">Nessuna nota</div>
@@ -1049,7 +1049,7 @@ export default function ProcessedTenders() {
                                                         type="button"
                                                         size="sm"
                                                         variant="outline"
-                                                        onClick={() => appendLeadNote(upload.id, lead.id, lead.note)}
+                                                        onClick={() => appendLeadNote(upload.id, lead.id, getLeadVisibleNote(lead))}
                                                         disabled={savingNoteId === lead.id + ':note'}
                                                         className="mt-1 h-7 w-full gap-1 print:hidden"
                                                       >
