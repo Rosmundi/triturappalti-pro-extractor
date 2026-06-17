@@ -891,31 +891,38 @@ export default function ProcessedTenders() {
                                              )}
                                            </div>
                                          )}
-                                         <div>
-                                           <div className="text-xs font-semibold text-muted-foreground mb-1">Nota appalto</div>
-                                           <textarea
-                                             value={tender.note_appalto || ''}
-                                             onChange={(e) => handleTenderNoteChange(upload.id, tender.project_id, e.target.value)}
-                                             placeholder="Nota sull'appalto..."
-                                             rows={2}
-                                             className="w-full min-h-[60px] text-sm p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:border-0 print:p-0 print:bg-transparent"
-                                             disabled={savingNoteId === 'tender:' + upload.id + ':' + tender.project_id}
-                                           />
-                                           <Button
-                                             type="button"
-                                             size="sm"
-                                             variant="outline"
-                                             onClick={() => saveTenderNote(upload.id, tender.project_id, tender.note_appalto || '')}
-                                             disabled={savingNoteId === 'tender:' + upload.id + ':' + tender.project_id}
-                                             className="mt-1 h-7 gap-1 print:hidden"
-                                           >
-                                             {savingNoteId === 'tender:' + upload.id + ':' + tender.project_id ? (
-                                               <><Loader2 className="h-3 w-3 animate-spin" />Salvataggio...</>
-                                             ) : (
-                                               <><Save className="h-3 w-3" />Salva nota appalto</>
-                                             )}
-                                           </Button>
-                                         </div>
+                                          <div>
+                                            <div className="text-xs font-semibold text-muted-foreground mb-1">Note appalto</div>
+                                            {tender.note_appalto && tender.note_appalto.trim() ? (
+                                              <div className="mb-2 text-xs whitespace-pre-wrap bg-muted/40 border border-border rounded p-2 max-h-40 overflow-y-auto">
+                                                {tender.note_appalto}
+                                              </div>
+                                            ) : (
+                                              <div className="mb-2 text-xs text-muted-foreground italic">Nessuna nota</div>
+                                            )}
+                                            <textarea
+                                              value={tenderNoteDrafts[upload.id + ':' + tender.project_id] || ''}
+                                              onChange={(e) => setTenderNoteDrafts(prev => ({ ...prev, [upload.id + ':' + tender.project_id]: e.target.value }))}
+                                              placeholder="Aggiungi una nuova nota..."
+                                              rows={2}
+                                              className="w-full min-h-[60px] text-sm p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:hidden"
+                                              disabled={savingNoteId === 'tender:' + upload.id + ':' + tender.project_id}
+                                            />
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => appendTenderNote(upload.id, tender.project_id, tender.note_appalto)}
+                                              disabled={savingNoteId === 'tender:' + upload.id + ':' + tender.project_id}
+                                              className="mt-1 h-7 gap-1 print:hidden"
+                                            >
+                                              {savingNoteId === 'tender:' + upload.id + ':' + tender.project_id ? (
+                                                <><Loader2 className="h-3 w-3 animate-spin" />Salvataggio...</>
+                                              ) : (
+                                                <><Save className="h-3 w-3" />Aggiungi nota datata</>
+                                              )}
+                                            </Button>
+                                          </div>
                                        </div>
                                       <div className="overflow-x-auto">
                                         <Table className="text-xs [&_th]:px-2 [&_th]:h-9 [&_td]:p-2 table-fixed">
@@ -995,27 +1002,34 @@ export default function ProcessedTenders() {
                                                 <TableCell>
                                                   <div className="space-y-2">
                                                     <div>
-                                                      <div className="text-[10px] font-semibold text-muted-foreground mb-1 print:hidden">Nota contatto</div>
+                                                      <div className="text-[10px] font-semibold text-muted-foreground mb-1 print:hidden">Note contatto</div>
+                                                      {lead.note && lead.note.trim() ? (
+                                                        <div className="mb-1 text-xs whitespace-pre-wrap bg-muted/40 border border-border rounded p-1.5 max-h-32 overflow-y-auto leading-snug">
+                                                          {lead.note}
+                                                        </div>
+                                                      ) : (
+                                                        <div className="mb-1 text-[11px] text-muted-foreground italic print:hidden">Nessuna nota</div>
+                                                      )}
                                                       <textarea
-                                                        value={lead.note || ''}
-                                                        onChange={(e) => handleLeadFieldChange(upload.id, lead.id, 'note', e.target.value)}
-                                                        placeholder="Nota sul contatto/lead..."
-                                                        rows={3}
-                                                        className="w-full min-h-[70px] text-sm p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:border-0 print:p-0 print:bg-transparent"
+                                                        value={leadNoteDrafts[lead.id] || ''}
+                                                        onChange={(e) => setLeadNoteDrafts(prev => ({ ...prev, [lead.id]: e.target.value }))}
+                                                        placeholder="Aggiungi una nuova nota..."
+                                                        rows={2}
+                                                        className="w-full min-h-[50px] text-sm p-2 border border-input rounded bg-background resize-y focus:outline-none focus:ring-1 focus:ring-ring print:hidden"
                                                         disabled={savingNoteId === lead.id + ':note'}
                                                       />
                                                       <Button
                                                         type="button"
                                                         size="sm"
                                                         variant="outline"
-                                                        onClick={() => updateLeadField(lead.id, 'note', lead.note || '')}
+                                                        onClick={() => appendLeadNote(upload.id, lead.id, lead.note)}
                                                         disabled={savingNoteId === lead.id + ':note'}
                                                         className="mt-1 h-7 w-full gap-1 print:hidden"
                                                       >
                                                         {savingNoteId === lead.id + ':note' ? (
                                                           <><Loader2 className="h-3 w-3 animate-spin" />Salvataggio...</>
                                                         ) : (
-                                                          <><Save className="h-3 w-3" />Salva nota contatto</>
+                                                          <><Save className="h-3 w-3" />Aggiungi nota datata</>
                                                         )}
                                                       </Button>
                                                     </div>
