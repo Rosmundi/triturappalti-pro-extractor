@@ -321,29 +321,44 @@ export default function ProcessedTenders() {
     }));
   };
 
-  const updateLeadField = async (
-    leadId: string,
-    field: 'note' | 'notes',
-    value: string
-  ) => {
-    setSavingNoteId(leadId + ':' + field);
+  const formatNoteTimestamp = (d = new Date()) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const appendDatedNote = (existing: string | null | undefined, entry: string) => {
+    const stamped = `[${formatNoteTimestamp()}] ${entry.trim()}`;
+    const base = (existing || '').trim();
+    return base ? `${base}\n\n${stamped}` : stamped;
+  };
+
+  const appendLeadNote = async (uploadId: string, leadId: string, currentNote: string | null) => {
+    const draft = (leadNoteDrafts[leadId] || '').trim();
+    if (!draft) {
+      toast({ title: "Nota vuota", description: "Scrivi qualcosa prima di salvare", variant: "destructive" });
+      return;
+    }
+    const merged = appendDatedNote(currentNote, draft);
+    setSavingNoteId(leadId + ':note');
     try {
-      const patch =
-        field === 'note'
-          ? { note: value }
-          : { notes: value };
-      const { error } = await supabase
-        .from('leads')
-        .update(patch)
-        .eq('id', leadId);
+      const { error } = await supabase.from('leads').update({ note: merged }).eq('id', leadId);
       if (error) throw error;
+      // Update local state
+      setUploads(prev => prev.map(u => {
+        if (u.id !== uploadId) return u;
+        return {
+          ...u,
+          leads: u.leads.map(l => l.id === leadId ? { ...l, note: merged } : l),
+          tenders: u.tenders.map(t => ({
+            ...t,
+            leads: t.leads.map(l => l.id === leadId ? { ...l, note: merged } : l),
+          })),
+        };
+      }));
+      setLeadNoteDrafts(prev => ({ ...prev, [leadId]: '' }));
     } catch (error) {
       console.error('Errore salvataggio nota:', error);
-      toast({
-        title: "Errore",
-        description: "Impossibile salvare la nota",
-        variant: "destructive",
-      });
+      toast({ title: "Errore", description: "Impossibile salvare la nota", variant: "destructive" });
     } finally {
       setSavingNoteId(null);
     }
