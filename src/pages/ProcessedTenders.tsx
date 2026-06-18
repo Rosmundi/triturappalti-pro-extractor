@@ -712,7 +712,16 @@ export default function ProcessedTenders() {
   }
 
   const flatLeads = uploads.flatMap((u) =>
-    u.leads.map((l) => ({ ...l, filename: u.filename }))
+    u.leads.map((l) => ({
+      ...l,
+      filename: u.filename,
+      upload_status: u.status,
+      uploaded_at_fmt: u.uploaded_at
+        ? new Date(u.uploaded_at).toLocaleString("it-IT", {
+            day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+          })
+        : "",
+    }))
   );
   const viewMode = (typeof window !== "undefined" && (localStorage.getItem("appalti.viewMode") as "hier" | "excel")) || "hier";
 
