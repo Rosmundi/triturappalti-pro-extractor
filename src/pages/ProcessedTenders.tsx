@@ -29,25 +29,44 @@ import { WEBHOOKS } from "@/config/webhooks";
 import { LeadsExcelGrid, type ExcelColumn } from "@/components/appalti/LeadsExcelGrid";
 
 const EXCEL_COLUMNS: ExcelColumn<any>[] = [
+  // File / upload
   { key: "filename", label: "File", width: 200, editable: false },
+  { key: "uploaded_at_fmt", label: "Caricato il", width: 140, editable: false },
+  { key: "upload_status", label: "Stato file", width: 110, editable: false },
+  // Appalto
+  { key: "project_id", label: "ID Progetto", width: 110, editable: false },
   { key: "nome_appalto", label: "Nome appalto", width: 220 },
   { key: "cig_appalto", label: "CIG", width: 110 },
   { key: "cup", label: "CUP", width: 110 },
+  { key: "descrizione_appalto", label: "Descrizione appalto", width: 280 },
+  { key: "value_eur", label: "Valore €", width: 110 },
+  { key: "phase", label: "Fase", width: 110 },
+  { key: "appalto_location", label: "Località appalto", width: 160 },
+  { key: "categoria_progetto", label: "Categoria progetto", width: 160 },
+  { key: "categorie_og", label: "Categorie OG", width: 140 },
+  { key: "tipo_intervento", label: "Tipo intervento", width: 160 },
+  { key: "committente_tipo", label: "Committente", width: 140 },
+  { key: "procedura_gara", label: "Procedura gara", width: 150 },
+  { key: "finanziamento", label: "Finanziamento", width: 140 },
+  { key: "data_appalto", label: "Data appalto", width: 120 },
+  { key: "data_fine_lavori", label: "Fine lavori", width: 120 },
+  { key: "termine_offerta", label: "Termine offerta", width: 130 },
+  { key: "note_appalto", label: "Note appalto", width: 260 },
+  // Lead
   { key: "lead_company", label: "Azienda", width: 200 },
   { key: "lead_surname", label: "Referente", width: 140 },
   { key: "lead_email", label: "Email", width: 200 },
   { key: "lead_number", label: "Telefono", width: 130 },
-  { key: "lead_category", label: "Categoria", width: 120 },
+  { key: "lead_category", label: "Categoria lead", width: 130 },
   { key: "entity_role", label: "Ruolo", width: 140 },
   { key: "quality_status", label: "Qualità", width: 100 },
-  { key: "lead_city", label: "Città", width: 130 },
-  { key: "lead_province", label: "Prov.", width: 70 },
-  { key: "value_eur", label: "Valore €", width: 110, editable: false },
-  { key: "phase", label: "Fase", width: 110, editable: false },
   { key: "website", label: "Web", width: 160 },
   { key: "street", label: "Indirizzo", width: 200 },
   { key: "cap", label: "CAP", width: 80 },
-  { key: "note", label: "Note", width: 260 },
+  { key: "lead_city", label: "Città", width: 130 },
+  { key: "lead_province", label: "Prov.", width: 70 },
+  { key: "country", label: "Paese", width: 100 },
+  { key: "note", label: "Note lead", width: 260 },
 ];
 
 const COLUMN_DEFS = [
