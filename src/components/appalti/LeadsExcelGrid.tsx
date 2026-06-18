@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Copy, Rows3, Eye, EyeOff } from "lucide-react";
+import { Copy, Rows3, Eye, EyeOff, Filter, FilterX, ChevronRight } from "lucide-react";
 
 export interface ExcelColumn<T> {
   key: keyof T & string;
@@ -20,6 +20,8 @@ interface Props<T extends { id: string }> {
   storageKey?: string;
   groupLabels?: Record<string, string>;
   groupClassName?: (group?: string) => string;
+  /** Keys used to keep related rows contiguous (e.g. ["project_id"]). */
+  sortRowsBy?: string[];
 }
 
 const COL_LETTER = (i: number) => {
@@ -31,8 +33,42 @@ const COL_LETTER = (i: number) => {
 
 type Density = "compact" | "normal" | "comfortable";
 
+type FilterOp =
+  | "contains" | "notContains"
+  | "equals" | "notEquals"
+  | "startsWith" | "endsWith"
+  | "empty" | "notEmpty";
+
+interface ColFilter { op: FilterOp; value?: string }
+
+const FILTER_LABELS: Record<FilterOp, string> = {
+  contains: "Contiene…",
+  notContains: "Non contiene…",
+  equals: "Uguale a…",
+  notEquals: "Diverso da…",
+  startsWith: "Inizia con…",
+  endsWith: "Finisce con…",
+  empty: "È vuoto",
+  notEmpty: "Non è vuoto",
+};
+
+const matchFilter = (raw: string, f: ColFilter) => {
+  const v = (raw || "").toLowerCase();
+  const q = (f.value || "").toLowerCase();
+  switch (f.op) {
+    case "contains": return v.includes(q);
+    case "notContains": return !v.includes(q);
+    case "equals": return v === q;
+    case "notEquals": return v !== q;
+    case "startsWith": return v.startsWith(q);
+    case "endsWith": return v.endsWith(q);
+    case "empty": return v.trim() === "";
+    case "notEmpty": return v.trim() !== "";
+  }
+};
+
 export function LeadsExcelGrid<T extends { id: string }>({
-  rows, columns, table = "leads", onRowChange, storageKey, groupLabels, groupClassName,
+  rows, columns, table = "leads", onRowChange, storageKey, groupLabels, groupClassName, sortRowsBy,
 }: Props<T>) {
   const { toast } = useToast();
   const [density, setDensity] = useState<Density>(() => {
@@ -80,8 +116,28 @@ export function LeadsExcelGrid<T extends { id: string }>({
     if (storageKey) localStorage.setItem(`${storageKey}.hiddenRows`, JSON.stringify(Array.from(hiddenRows)));
   }, [hiddenRows, storageKey]);
 
+  // Filters (persisted)
+  const [filters, setFilters] = useState<Record<string, ColFilter>>(() => {
+    if (!storageKey) return {};
+    try {
+      const raw = localStorage.getItem(`${storageKey}.filters`);
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
+  useEffect(() => {
+    if (storageKey) localStorage.setItem(`${storageKey}.filters`, JSON.stringify(filters));
+  }, [filters, storageKey]);
+
+  const setColFilter = (key: string, f: ColFilter | null) => {
+    setFilters((p) => {
+      const n = { ...p };
+      if (!f) delete n[key]; else n[key] = f;
+      return n;
+    });
+  };
+
   const [menu, setMenu] = useState<
-    | { x: number; y: number; type: "col"; colKey: string }
+    | { x: number; y: number; type: "col"; colKey: string; submenu?: "filter" }
     | { x: number; y: number; type: "row"; rowId: string }
     | null
   >(null);
@@ -94,7 +150,34 @@ export function LeadsExcelGrid<T extends { id: string }>({
   }, [menu]);
 
   const visibleColumns = useMemo(() => columns.filter((c) => !hiddenCols.has(c.key)), [columns, hiddenCols]);
-  const visibleRows = useMemo(() => rows.filter((r) => !hiddenRows.has(r.id)), [rows, hiddenRows]);
+
+  const cellValue = (row: T, key: string) => {
+    const v = (row as any)[key];
+    return v == null ? "" : String(v);
+  };
+
+  const visibleRows = useMemo(() => {
+    let out = rows.filter((r) => !hiddenRows.has(r.id));
+    // Apply column filters
+    const active = Object.entries(filters);
+    if (active.length) {
+      out = out.filter((r) => active.every(([k, f]) => matchFilter(cellValue(r, k), f)));
+    }
+    // Auto-sort to keep grouped rows contiguous
+    if (sortRowsBy && sortRowsBy.length) {
+      out = [...out].sort((a, b) => {
+        for (const k of sortRowsBy) {
+          const av = cellValue(a, k);
+          const bv = cellValue(b, k);
+          const cmp = av.localeCompare(bv, "it", { numeric: true, sensitivity: "base" });
+          if (cmp !== 0) return cmp;
+        }
+        return 0;
+      });
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, hiddenRows, filters, sortRowsBy?.join("|")]);
 
   // Build contiguous group spans from visibleColumns
   const groupSpans = useMemo(() => {
@@ -118,11 +201,6 @@ export function LeadsExcelGrid<T extends { id: string }>({
   const [sel, setSel] = useState<{ r: number; c: number } | null>(null);
   const [editing, setEditing] = useState<{ r: number; c: number; value: string } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-
-  const cellValue = (row: T, key: string) => {
-    const v = (row as any)[key];
-    return v == null ? "" : String(v);
-  };
 
   const startResize = (key: string, e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -189,14 +267,35 @@ export function LeadsExcelGrid<T extends { id: string }>({
 
   const showAllCols = () => setHiddenCols(new Set());
   const showAllRows = () => setHiddenRows(new Set());
+  const clearAllFilters = () => setFilters({});
+
+  const filterCount = Object.keys(filters).length;
+
+  const applyFilterOp = (key: string, op: FilterOp) => {
+    if (op === "empty" || op === "notEmpty") {
+      setColFilter(key, { op });
+      setMenu(null);
+      return;
+    }
+    const current = filters[key]?.value ?? "";
+    const val = window.prompt(`Valore filtro (${FILTER_LABELS[op].replace("…", "")}):`, current);
+    if (val === null) { setMenu(null); return; }
+    setColFilter(key, { op, value: val });
+    setMenu(null);
+  };
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <div className="text-xs text-muted-foreground">
-          {visibleRows.length}/{rows.length} righe · {visibleColumns.length}/{columns.length} colonne · doppio click per modificare · click destro per nascondere
+          {visibleRows.length}/{rows.length} righe · {visibleColumns.length}/{columns.length} colonne · doppio click per modificare · click destro per nascondere/filtrare
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {filterCount > 0 && (
+            <Button size="sm" variant="outline" onClick={clearAllFilters}>
+              <FilterX className="h-3 w-3" /> Rimuovi filtri ({filterCount})
+            </Button>
+          )}
           {hiddenCols.size > 0 && (
             <Button size="sm" variant="outline" onClick={showAllCols}>
               <Eye className="h-3 w-3" /> Mostra colonne ({hiddenCols.size})
@@ -268,7 +367,12 @@ export function LeadsExcelGrid<T extends { id: string }>({
                     setMenu({ x: e.clientX, y: e.clientY, type: "col", colKey: col.key });
                   }}
                 >
-                  {col.label}
+                  <span className="inline-flex items-center gap-1">
+                    {col.label}
+                    {filters[col.key] && (
+                      <Filter className="h-3 w-3 text-primary" />
+                    )}
+                  </span>
                   <span
                     onMouseDown={(e) => startResize(col.key, e)}
                     className="absolute right-0 top-0 h-full w-1 cursor-col-resize select-none"
@@ -332,12 +436,61 @@ export function LeadsExcelGrid<T extends { id: string }>({
 
       {menu && (
         <div
-          className="fixed z-50 min-w-[200px] rounded-md border bg-popover text-popover-foreground shadow-md py-1 text-sm"
+          className="fixed z-50 min-w-[220px] rounded-md border bg-popover text-popover-foreground shadow-md py-1 text-sm"
           style={{ left: menu.x, top: menu.y }}
           onClick={(e) => e.stopPropagation()}
         >
           {menu.type === "col" ? (
+            menu.submenu === "filter" ? (
+              <>
+                <div className="px-3 py-1 text-[11px] font-semibold text-muted-foreground uppercase">Filtra colonna</div>
+                {(Object.keys(FILTER_LABELS) as FilterOp[]).map((op) => (
+                  <button
+                    key={op}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-muted"
+                    onClick={() => applyFilterOp(menu.colKey, op)}
+                  >
+                    <Filter className="h-3.5 w-3.5" /> {FILTER_LABELS[op]}
+                  </button>
+                ))}
+                {filters[menu.colKey] && (
+                  <button
+                    className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-muted border-t mt-1"
+                    onClick={() => { setColFilter(menu.colKey, null); setMenu(null); }}
+                  >
+                    <FilterX className="h-3.5 w-3.5" /> Rimuovi filtro colonna
+                  </button>
+                )}
+              </>
+            ) : (
             <>
+              <button
+                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 hover:bg-muted"
+                onClick={() => setMenu({ ...menu, submenu: "filter" })}
+              >
+                <span className="flex items-center gap-2">
+                  <Filter className="h-3.5 w-3.5" /> Filtra
+                  {filters[menu.colKey] && <span className="text-[10px] text-primary">(attivo)</span>}
+                </span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+              {filters[menu.colKey] && (
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-muted"
+                  onClick={() => { setColFilter(menu.colKey, null); setMenu(null); }}
+                >
+                  <FilterX className="h-3.5 w-3.5" /> Rimuovi filtro
+                </button>
+              )}
+              {filterCount > 0 && (
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-muted"
+                  onClick={() => { clearAllFilters(); setMenu(null); }}
+                >
+                  <FilterX className="h-3.5 w-3.5" /> Rimuovi tutti i filtri ({filterCount})
+                </button>
+              )}
+              <div className="border-t my-1" />
               <button
                 className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-muted"
                 onClick={() => {
@@ -356,6 +509,7 @@ export function LeadsExcelGrid<T extends { id: string }>({
                 </button>
               )}
             </>
+            )
           ) : (
             <>
               <button
