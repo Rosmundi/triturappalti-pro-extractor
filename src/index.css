@@ -239,3 +239,61 @@ All colors MUST be HSL.
 .xls-grid.density-compact th, .xls-grid.density-compact td { padding: 2px 6px; font-size: 11px; }
 .xls-grid.density-comfortable th, .xls-grid.density-comfortable td { padding: 8px 12px; font-size: 13px; }
 .xls-wrap { overflow: auto; max-height: calc(100vh - 280px); border: 1px solid hsl(var(--border)); border-radius: 6px; }
+
+/* Column group tinting: file / appalto / lead */
+.xls-grid td.xls-group-file,
+.xls-grid thead th.xls-group-file {
+  background: hsl(210 15% 94%);
+}
+.xls-grid tbody tr:nth-child(even) td.xls-group-file { background: hsl(210 15% 90%); }
+
+.xls-grid td.xls-group-appalto,
+.xls-grid thead th.xls-group-appalto {
+  background: hsl(35 90% 95%);
+}
+.xls-grid tbody tr:nth-child(even) td.xls-group-appalto { background: hsl(35 85% 90%); }
+.xls-grid thead tr:not(.xls-col-letters) th.xls-group-appalto { background: hsl(35 80% 78%); color: hsl(28 60% 22%); }
+
+.xls-grid td.xls-group-lead,
+.xls-grid thead th.xls-group-lead {
+  background: hsl(210 90% 96%);
+}
+.xls-grid tbody tr:nth-child(even) td.xls-group-lead { background: hsl(210 80% 92%); }
+.xls-grid thead tr:not(.xls-col-letters) th.xls-group-lead { background: hsl(210 80% 80%); color: hsl(215 60% 22%); }
+
+/* Thick separator at group boundary */
+.xls-grid td.xls-group-start,
+.xls-grid th.xls-group-start {
+  border-left: 2px solid hsl(var(--foreground) / 0.35);
+}
+
+/* Group header row (top band over column letters) */
+.xls-grid .xls-group-row th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.xls-grid .xls-col-letters th { top: 22px; }
+.xls-grid thead tr:not(.xls-group-row):not(.xls-col-letters) th { top: 40px; }
+
+/* Dark mode adjustments */
+.dark .xls-grid td.xls-group-file,
+.dark .xls-grid thead th.xls-group-file { background: hsl(210 15% 18%); }
+.dark .xls-grid tbody tr:nth-child(even) td.xls-group-file { background: hsl(210 15% 22%); }
+
+.dark .xls-grid td.xls-group-appalto,
+.dark .xls-grid thead th.xls-group-appalto { background: hsl(35 35% 18%); }
+.dark .xls-grid tbody tr:nth-child(even) td.xls-group-appalto { background: hsl(35 35% 22%); }
+.dark .xls-grid thead tr:not(.xls-col-letters) th.xls-group-appalto { background: hsl(35 50% 32%); color: hsl(40 90% 88%); }
+
+.dark .xls-grid td.xls-group-lead,
+.dark .xls-grid thead th.xls-group-lead { background: hsl(210 40% 18%); }
+.dark .xls-grid tbody tr:nth-child(even) td.xls-group-lead { background: hsl(210 40% 22%); }
+.dark .xls-grid thead tr:not(.xls-col-letters) th.xls-group-lead { background: hsl(210 60% 30%); color: hsl(210 90% 90%); }
