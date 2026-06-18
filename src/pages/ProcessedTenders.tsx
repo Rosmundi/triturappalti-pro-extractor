@@ -766,6 +766,7 @@ export default function ProcessedTenders() {
                   table="leads"
                   storageKey="appalti.excel"
                   groupLabels={{ file: "File caricato", appalto: "Appalto", lead: "Lead" }}
+                  sortRowsBy={["project_id", "nome_appalto", "lead_company"]}
                   onRowChange={(id, patch) => {
                     setUploads((prev) => prev.map((u) => ({
                       ...u,
