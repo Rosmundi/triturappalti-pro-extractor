@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Copy, Rows3 } from "lucide-react";
+import { Copy, Rows3, Eye, EyeOff } from "lucide-react";
 
 export interface ExcelColumn<T> {
   key: keyof T & string;
@@ -54,6 +54,45 @@ export function LeadsExcelGrid<T extends { id: string }>({
     if (storageKey) localStorage.setItem(`${storageKey}.widths`, JSON.stringify(widths));
   }, [widths, storageKey]);
 
+  // Hidden columns / rows (persisted)
+  const [hiddenCols, setHiddenCols] = useState<Set<string>>(() => {
+    if (!storageKey) return new Set();
+    try {
+      const raw = localStorage.getItem(`${storageKey}.hiddenCols`);
+      return new Set<string>(raw ? JSON.parse(raw) : []);
+    } catch { return new Set(); }
+  });
+  useEffect(() => {
+    if (storageKey) localStorage.setItem(`${storageKey}.hiddenCols`, JSON.stringify(Array.from(hiddenCols)));
+  }, [hiddenCols, storageKey]);
+
+  const [hiddenRows, setHiddenRows] = useState<Set<string>>(() => {
+    if (!storageKey) return new Set();
+    try {
+      const raw = localStorage.getItem(`${storageKey}.hiddenRows`);
+      return new Set<string>(raw ? JSON.parse(raw) : []);
+    } catch { return new Set(); }
+  });
+  useEffect(() => {
+    if (storageKey) localStorage.setItem(`${storageKey}.hiddenRows`, JSON.stringify(Array.from(hiddenRows)));
+  }, [hiddenRows, storageKey]);
+
+  const [menu, setMenu] = useState<
+    | { x: number; y: number; type: "col"; colKey: string }
+    | { x: number; y: number; type: "row"; rowId: string }
+    | null
+  >(null);
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    return () => { window.removeEventListener("click", close); window.removeEventListener("scroll", close, true); };
+  }, [menu]);
+
+  const visibleColumns = useMemo(() => columns.filter((c) => !hiddenCols.has(c.key)), [columns, hiddenCols]);
+  const visibleRows = useMemo(() => rows.filter((r) => !hiddenRows.has(r.id)), [rows, hiddenRows]);
+
   const [sel, setSel] = useState<{ r: number; c: number } | null>(null);
   const [editing, setEditing] = useState<{ r: number; c: number; value: string } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -83,8 +122,8 @@ export function LeadsExcelGrid<T extends { id: string }>({
 
   const commitEdit = async () => {
     if (!editing) return;
-    const col = columns[editing.c];
-    const row = rows[editing.r];
+    const col = visibleColumns[editing.c];
+    const row = visibleRows[editing.r];
     const original = cellValue(row, col.key);
     setEditing(null);
     if (editing.value === original) return;
@@ -105,36 +144,47 @@ export function LeadsExcelGrid<T extends { id: string }>({
     }
     if (!sel) return;
     const { r, c } = sel;
-    if (e.key === "ArrowDown") { e.preventDefault(); setSel({ r: Math.min(rows.length - 1, r + 1), c }); }
+    if (e.key === "ArrowDown") { e.preventDefault(); setSel({ r: Math.min(visibleRows.length - 1, r + 1), c }); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setSel({ r: Math.max(0, r - 1), c }); }
-    else if (e.key === "ArrowRight" || e.key === "Tab") { e.preventDefault(); setSel({ r, c: Math.min(columns.length - 1, c + 1) }); }
+    else if (e.key === "ArrowRight" || e.key === "Tab") { e.preventDefault(); setSel({ r, c: Math.min(visibleColumns.length - 1, c + 1) }); }
     else if (e.key === "ArrowLeft" || (e.key === "Tab" && e.shiftKey)) { e.preventDefault(); setSel({ r, c: Math.max(0, c - 1) }); }
     else if (e.key === "Enter" || e.key === "F2") {
       e.preventDefault();
-      const col = columns[c];
-      if (col.editable !== false) setEditing({ r, c, value: cellValue(rows[r], col.key) });
+      const col = visibleColumns[c];
+      if (col.editable !== false) setEditing({ r, c, value: cellValue(visibleRows[r], col.key) });
     } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
-      const v = cellValue(rows[r], columns[c].key);
+      const v = cellValue(visibleRows[r], visibleColumns[c].key);
       navigator.clipboard.writeText(v).catch(() => undefined);
     }
   };
 
   const copyAllAsTSV = async () => {
-    const header = columns.map((c) => c.label).join("\t");
-    const body = rows.map((r) => columns.map((c) => cellValue(r, c.key).replace(/\t/g, " ").replace(/\n/g, " ")).join("\t")).join("\n");
+    const header = visibleColumns.map((c) => c.label).join("\t");
+    const body = visibleRows.map((r) => visibleColumns.map((c) => cellValue(r, c.key).replace(/\t/g, " ").replace(/\n/g, " ")).join("\t")).join("\n");
     await navigator.clipboard.writeText(header + "\n" + body);
-    toast({ title: "Copiato", description: `${rows.length} righe copiate (incollabili in Excel).` });
+    toast({ title: "Copiato", description: `${visibleRows.length} righe copiate (incollabili in Excel).` });
   };
 
-  const totalCount = useMemo(() => rows.length, [rows.length]);
+  const showAllCols = () => setHiddenCols(new Set());
+  const showAllRows = () => setHiddenRows(new Set());
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <div className="text-xs text-muted-foreground">
-          {totalCount} righe · doppio click per modificare · frecce / Enter per navigare
+          {visibleRows.length}/{rows.length} righe · {visibleColumns.length}/{columns.length} colonne · doppio click per modificare · click destro per nascondere
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {hiddenCols.size > 0 && (
+            <Button size="sm" variant="outline" onClick={showAllCols}>
+              <Eye className="h-3 w-3" /> Mostra colonne ({hiddenCols.size})
+            </Button>
+          )}
+          {hiddenRows.size > 0 && (
+            <Button size="sm" variant="outline" onClick={showAllRows}>
+              <Eye className="h-3 w-3" /> Mostra righe ({hiddenRows.size})
+            </Button>
+          )}
           <Button size="sm" variant="outline" onClick={copyAllAsTSV}>
             <Copy className="h-3 w-3" /> Copia TSV
           </Button>
@@ -163,12 +213,20 @@ export function LeadsExcelGrid<T extends { id: string }>({
           <thead>
             <tr className="xls-col-letters">
               <th className="xls-row-num"> </th>
-              {columns.map((_, i) => <th key={i}>{COL_LETTER(i)}</th>)}
+              {visibleColumns.map((_, i) => <th key={i}>{COL_LETTER(i)}</th>)}
             </tr>
             <tr>
               <th className="xls-row-num">#</th>
-              {columns.map((col) => (
-                <th key={col.key} style={{ width: widths[col.key], minWidth: widths[col.key] }} className="relative">
+              {visibleColumns.map((col) => (
+                <th
+                  key={col.key}
+                  style={{ width: widths[col.key], minWidth: widths[col.key] }}
+                  className="relative"
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setMenu({ x: e.clientX, y: e.clientY, type: "col", colKey: col.key });
+                  }}
+                >
                   {col.label}
                   <span
                     onMouseDown={(e) => startResize(col.key, e)}
@@ -179,13 +237,23 @@ export function LeadsExcelGrid<T extends { id: string }>({
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && (
-              <tr><td colSpan={columns.length + 1} className="text-center text-muted-foreground py-6">Nessun dato</td></tr>
+            {visibleRows.length === 0 && (
+              <tr><td colSpan={visibleColumns.length + 1} className="text-center text-muted-foreground py-6">Nessun dato</td></tr>
             )}
-            {rows.map((row, r) => (
-              <tr key={row.id}>
-                <td className="xls-row-num">{r + 1}</td>
-                {columns.map((col, c) => {
+            {visibleRows.map((row, r) => (
+              <tr key={row.id} onContextMenu={(e) => {
+                // only trigger row menu if event target is the row-num cell handler below;
+                // here we let cell handler override
+              }}>
+                <td
+                  className="xls-row-num"
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setMenu({ x: e.clientX, y: e.clientY, type: "row", rowId: row.id });
+                  }}
+                >{r + 1}</td>
+                {visibleColumns.map((col, c) => {
                   const isSel = sel?.r === r && sel?.c === c;
                   const isEditing = editing?.r === r && editing?.c === c;
                   const v = cellValue(row, col.key);
@@ -197,6 +265,10 @@ export function LeadsExcelGrid<T extends { id: string }>({
                       onClick={() => setSel({ r, c })}
                       onDoubleClick={() => {
                         if (col.editable !== false) setEditing({ r, c, value: v });
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setMenu({ x: e.clientX, y: e.clientY, type: "row", rowId: row.id });
                       }}
                       title={v}
                     >
@@ -216,6 +288,56 @@ export function LeadsExcelGrid<T extends { id: string }>({
           </tbody>
         </table>
       </div>
+
+      {menu && (
+        <div
+          className="fixed z-50 min-w-[200px] rounded-md border bg-popover text-popover-foreground shadow-md py-1 text-sm"
+          style={{ left: menu.x, top: menu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {menu.type === "col" ? (
+            <>
+              <button
+                className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-muted"
+                onClick={() => {
+                  setHiddenCols((p) => { const n = new Set(p); n.add(menu.colKey); return n; });
+                  setMenu(null);
+                }}
+              >
+                <EyeOff className="h-3.5 w-3.5" /> Nascondi colonna
+              </button>
+              {hiddenCols.size > 0 && (
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-muted"
+                  onClick={() => { showAllCols(); setMenu(null); }}
+                >
+                  <Eye className="h-3.5 w-3.5" /> Mostra tutte le colonne ({hiddenCols.size})
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <button
+                className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-muted"
+                onClick={() => {
+                  setHiddenRows((p) => { const n = new Set(p); n.add(menu.rowId); return n; });
+                  setMenu(null);
+                }}
+              >
+                <EyeOff className="h-3.5 w-3.5" /> Nascondi riga
+              </button>
+              {hiddenRows.size > 0 && (
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-muted"
+                  onClick={() => { showAllRows(); setMenu(null); }}
+                >
+                  <Eye className="h-3.5 w-3.5" /> Mostra tutte le righe ({hiddenRows.size})
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
