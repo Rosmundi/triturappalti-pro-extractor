@@ -9,6 +9,7 @@ export interface ExcelColumn<T> {
   label: string;
   width?: number;
   editable?: boolean;
+  group?: string;
 }
 
 interface Props<T extends { id: string }> {
@@ -17,6 +18,8 @@ interface Props<T extends { id: string }> {
   table?: string;
   onRowChange?: (id: string, patch: Partial<T>) => void;
   storageKey?: string;
+  groupLabels?: Record<string, string>;
+  groupClassName?: (group?: string) => string;
 }
 
 const COL_LETTER = (i: number) => {
@@ -29,7 +32,7 @@ const COL_LETTER = (i: number) => {
 type Density = "compact" | "normal" | "comfortable";
 
 export function LeadsExcelGrid<T extends { id: string }>({
-  rows, columns, table = "leads", onRowChange, storageKey,
+  rows, columns, table = "leads", onRowChange, storageKey, groupLabels, groupClassName,
 }: Props<T>) {
   const { toast } = useToast();
   const [density, setDensity] = useState<Density>(() => {
@@ -92,6 +95,25 @@ export function LeadsExcelGrid<T extends { id: string }>({
 
   const visibleColumns = useMemo(() => columns.filter((c) => !hiddenCols.has(c.key)), [columns, hiddenCols]);
   const visibleRows = useMemo(() => rows.filter((r) => !hiddenRows.has(r.id)), [rows, hiddenRows]);
+
+  // Build contiguous group spans from visibleColumns
+  const groupSpans = useMemo(() => {
+    const spans: { group?: string; span: number; startIndex: number }[] = [];
+    visibleColumns.forEach((c, i) => {
+      const last = spans[spans.length - 1];
+      if (last && last.group === c.group) last.span += 1;
+      else spans.push({ group: c.group, span: 1, startIndex: i });
+    });
+    return spans;
+  }, [visibleColumns]);
+
+  const groupClassFor = (g?: string) => {
+    if (groupClassName) return groupClassName(g) || "";
+    if (!g) return "";
+    return `xls-group-${g}`;
+  };
+  const isGroupStart = (i: number) =>
+    i > 0 && visibleColumns[i].group !== visibleColumns[i - 1].group;
 
   const [sel, setSel] = useState<{ r: number; c: number } | null>(null);
   const [editing, setEditing] = useState<{ r: number; c: number; value: string } | null>(null);
@@ -211,9 +233,28 @@ export function LeadsExcelGrid<T extends { id: string }>({
       >
         <table className={`xls-grid density-${density}`}>
           <thead>
+            {groupSpans.some((s) => s.group) && (
+              <tr className="xls-group-row">
+                <th className="xls-row-num"> </th>
+                {groupSpans.map((s, i) => (
+                  <th
+                    key={i}
+                    colSpan={s.span}
+                    className={`${groupClassFor(s.group)} ${s.startIndex > 0 ? "xls-group-start" : ""}`}
+                  >
+                    {s.group ? (groupLabels?.[s.group] ?? s.group) : ""}
+                  </th>
+                ))}
+              </tr>
+            )}
             <tr className="xls-col-letters">
               <th className="xls-row-num"> </th>
-              {visibleColumns.map((_, i) => <th key={i}>{COL_LETTER(i)}</th>)}
+              {visibleColumns.map((col, i) => (
+                <th
+                  key={i}
+                  className={`${groupClassFor(col.group)} ${isGroupStart(i) ? "xls-group-start" : ""}`}
+                >{COL_LETTER(i)}</th>
+              ))}
             </tr>
             <tr>
               <th className="xls-row-num">#</th>
@@ -221,7 +262,7 @@ export function LeadsExcelGrid<T extends { id: string }>({
                 <th
                   key={col.key}
                   style={{ width: widths[col.key], minWidth: widths[col.key] }}
-                  className="relative"
+                  className={`relative ${groupClassFor(col.group)} ${isGroupStart(visibleColumns.indexOf(col)) ? "xls-group-start" : ""}`}
                   onContextMenu={(e) => {
                     e.preventDefault();
                     setMenu({ x: e.clientX, y: e.clientY, type: "col", colKey: col.key });
@@ -261,7 +302,7 @@ export function LeadsExcelGrid<T extends { id: string }>({
                     <td
                       key={col.key}
                       style={{ width: widths[col.key], minWidth: widths[col.key], maxWidth: widths[col.key] }}
-                      className={`${isSel ? "xls-selected" : ""} ${isEditing ? "xls-editing" : ""}`}
+                      className={`${groupClassFor(col.group)} ${isGroupStart(c) ? "xls-group-start" : ""} ${isSel ? "xls-selected" : ""} ${isEditing ? "xls-editing" : ""}`}
                       onClick={() => setSel({ r, c })}
                       onDoubleClick={() => {
                         if (col.editable !== false) setEditing({ r, c, value: v });
